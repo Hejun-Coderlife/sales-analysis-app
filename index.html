@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales Analysis App</title>
+  <link rel="icon" type="image/png" href="./favicon.png" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+  <style>
+    :root{
+      --bg:#161d31; --card:#ffffff; --text:#111827; --muted:#667085;
+      --line:#7690f3; --accent:#7690f3; --good:#16a34a; --warn:#d97706;
+      --glow:#606292;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial, sans-serif;background:radial-gradient(circle at 30% 40%, rgba(120, 80, 255, 0.4), transparent 40%),radial-gradient(circle at 70% 60%, rgba(0, 150, 255, 0.3), transparent 50%),linear-gradient(180deg, #0b0f2a, #050816);min-height:100vh;color:var(--text)}
+    .wrap{max-width:1400px;margin:24px auto;padding:0 16px}
+    h1{margin:0 0 8px;font-size:28px;color:#f8fbff;text-shadow:0 0 18px rgba(105,105,159,.40), 0 2px 12px rgba(0,0,0,.35)}
+    p{margin:6px 0;color:#d7def2}
+    .grid{display:grid;gap:16px}
+    .grid-2{grid-template-columns:1.2fr .8fr}
+    .grid-3{grid-template-columns:repeat(3,1fr)}
+    .grid-4{grid-template-columns:repeat(4,1fr)}
+    .dashboard-lower{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px;align-items:start}
+    .dashboard-lower-left{display:contents}
+    .control-panel{padding:22px 20px}
+.control-top{
+  display:grid;
+  grid-template-columns:minmax(300px,1fr) minmax(520px,1.75fr);
+  gap:28px;
+  align-items:start
+}
+.control-left{
+  display:grid;
+  grid-template-rows:auto auto auto;
+  gap:14px;
+  align-content:start
+}
+.upload-box{display:grid;gap:10px;align-content:start}
+.field-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(150px,1fr));
+  gap:14px 16px;
+  align-items:start
+}
+.control-field.hidden-control,.field-grid > .control-field.hidden-control,.multi-grid.control-field.hidden-control{display:none !important}
+.button-group{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.status-row{display:flex;align-items:center;justify-content:flex-start;min-height:24px}
+#status{font-size:12px;color:#6b7280}
+input[type="date"], select.control-select{
+  border:1px solid #7690f3;border-radius:12px;padding:10px 12px;background:#ffffff;color:var(--text);min-width:120px;box-shadow:0 0 12px rgba(105,105,159,.18);height:44px
+}
+.store-multi{display:flex;flex-direction:column;gap:8px;min-width:0}
+.store-search-input{
+  width:100%;
+  min-height:44px;
+  border:1px solid #7690f3;
+  border-radius:12px;
+  padding:10px 12px;
+  background:#ffffff;
+  color:var(--text);
+  box-shadow:0 0 12px rgba(105,105,159,.18)
+}
+.store-options{
+  max-height:132px;
+  overflow:auto;
+  border:1px solid #7690f3;
+  border-radius:12px;
+  padding:8px 10px;
+  background:#fff;
+  box-shadow:0 0 12px rgba(105,105,159,.12)
+}
+.store-option{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:14px;color:#111827}
+.store-option input{margin:0}
+.store-selected{font-size:12px;color:#6b7280;min-height:16px}
+.multi-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px 18px;
+  grid-column:1 / -1;
+  align-items:start;
+}
+.filter-dropdown{position:relative}
+.filter-trigger{
+  width:100%;
+  min-height:44px;
+  border:1px solid #7690f3;
+  border-radius:12px;
+  padding:10px 12px;
+  background:#ffffff;
+  color:var(--text);
+  box-shadow:0 0 12px rgba(105,105,159,.18);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  cursor:pointer;
+}
+.filter-caret{color:#667085;font-size:12px}
+.filter-menu{
+  position:absolute;
+  top:calc(100% + 8px);
+  left:0;
+  width:100%;
+  min-width:300px;
+  z-index:80;
+  background:rgba(255,255,255,.995);
+  border:1px solid #cfd6fb;
+  border-radius:14px;
+  padding:12px;
+  box-shadow:0 24px 56px rgba(17,24,39,.24), 0 0 0 1px rgba(254,112,246,.18), 0 0 34px rgba(254,112,246,.35);
+  backdrop-filter:blur(4px);
+}
+.range-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.range-apply{display:flex;justify-content:flex-end;margin-top:10px}
+.range-trigger-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu-label{font-size:12px;color:#55627a;margin-bottom:4px}
+.overlay-light{
+  position:fixed;inset:0;background:rgba(254,112,246,.12);backdrop-filter:blur(3px);z-index:70;
+}
+
+.store-options{
+  max-height:220px;
+  min-height:132px;
+  overflow:auto;
+  border:1px solid #f4b8ef;
+  border-radius:12px;
+  padding:8px 10px;
+  background:#fff;
+  box-shadow:inset 0 0 0 1px rgba(254,112,246,.10);
+}
+.store-option{display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:14px;color:#111827}
+.dropdown-actions{display:flex;justify-content:flex-end;margin:8px 0 6px}
+.clear-filter-btn{min-height:32px;padding:6px 12px;border:1px solid #fe70f6;background:#fff;color:#fe70f6;border-radius:10px;box-shadow:none}
+.clear-filter-btn:hover{background:#fff2fd}
+.active-glow{
+  box-shadow:0 0 0 2px #fe70f6, 0 0 24px rgba(254,112,246,.22) !important;
+}
+@media (max-width: 900px){
+  .multi-grid{grid-template-columns:1fr}
+}
+@media (max-width: 1180px){
+  .control-top{grid-template-columns:1fr;gap:20px}
+  .field-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}
+}
+@media (max-width: 700px){
+  .field-grid{grid-template-columns:1fr}
+  .button-group{gap:12px}
+}
+
+    .sleep-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+    .sleep-card{min-width:0;width:100%;height:340px}
+    .sleep-card .table-wrap{width:100%;height:240px;max-height:240px;overflow:auto}
+    #sleepListTable{width:100%;height:240px;max-height:240px;overflow:auto;display:block;white-space:nowrap}
+    #sleepByStoreTable{width:100%;height:240px;max-height:240px;overflow-y:auto;overflow-x:hidden;display:block;white-space:normal}
+    #sleepListTable table{min-width:1600px}
+    #sleepByStoreTable table{width:100%;min-width:0}
+    .card{background:white;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0, 0, 0, 0.2), 0 0 40px rgba(120, 80, 255, 0.15)}
+    .kpi{padding:14px 16px}
+    .kpi .label{font-size:13px;color:#111827}
+    .card label{color:#111827}
+    input::placeholder{color:#6b7280;opacity:.95}
+    #status{color:#111827}
+    #status .ok{color:#111827}
+
+    .kpi .value{font-size:28px;font-weight:700;margin-top:6px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .col{display:flex;flex-direction:column;gap:6px}
+    label{font-size:13px;color:#111827}
+    .card label{color:#111827}
+    input::placeholder{color:#6b7280;opacity:.95}
+    #status{color:#111827}
+    #status .ok{color:#111827}
+
+    input,select,button,textarea{font:inherit}
+    input[type="number"], input[type="text"]{
+      border:1px solid #7690f3;border-radius:12px;padding:10px 12px;background:#ffffff;color:var(--text);min-width:120px;box-shadow:0 0 12px rgba(105,105,159,.18)
+    }
+    input[type="file"]{padding:8px 0}
+    button{border:1px solid #007a31;background:linear-gradient(180deg, #00963d, #007a31);color:#fff;padding:11px 16px;border-radius:12px;cursor:pointer;font-weight:600;box-shadow:0 0 18px rgba(105,105,159,.34)}
+    .analyze-wrap{
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:1px;
+      border-radius:16px;
+      background:transparent;
+      box-shadow:none;
+    }
+    .analyze-spinner{
+      position:absolute;
+      inset:0;
+      border-radius:16px;
+      pointer-events:none;
+      opacity:0;
+      z-index:1;
+      transition:opacity .18s ease;
+    }
+    .analyze-spinner::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:16px;
+      padding:1px;
+      background:
+        conic-gradient(
+          from 0deg,
+          rgba(133,255,170,0) 0deg,
+          rgba(133,255,170,0) 220deg,
+          rgba(78,255,123,.14) 255deg,
+          rgba(98,255,146,.86) 304deg,
+          rgba(255,252,214,.98) 334deg,
+          rgba(98,255,146,.22) 356deg,
+          rgba(133,255,170,0) 360deg
+        );
+      -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite:xor;
+      mask-composite:exclude;
+      filter:drop-shadow(0 0 6px rgba(108,255,146,.56)) drop-shadow(0 0 14px rgba(190,255,210,.42)) drop-shadow(0 0 22px rgba(255,248,189,.24));
+    }
+    #analyzeBtn{
+      position:relative;
+      z-index:2;
+      transform:translateY(0);
+      will-change:transform;
+      border:none;
+      background:#08963c;
+      border-radius:15px;
+      box-shadow:none;
+    }
+    #analyzeBtn.run-bounce{animation:runButtonBounce .24s ease-out}
+    .analyze-wrap.loading-ring .analyze-spinner{
+      opacity:1;
+      animation:analyzeRingSpin .95s linear infinite;
+    }
+    @keyframes runButtonBounce{
+      0%{transform:translateY(0) scale(1)}
+      35%{transform:translateY(3px) scale(.985)}
+      65%{transform:translateY(-1px) scale(1.005)}
+      100%{transform:translateY(0) scale(1)}
+    }
+    @keyframes analyzeRingSpin{
+      from{transform:rotate(0deg)}
+      to{transform:rotate(360deg)}
+    }
+    button.secondary{background:linear-gradient(180deg, rgba(18,28,67,.98), rgba(10,18,48,.98));box-shadow:0 0 18px rgba(96,98,146,.25)}
+    button.light{background:linear-gradient(180deg, rgba(31,49,112,.95), rgba(20,33,79,.95));color:#dfe6ff;box-shadow:0 0 18px rgba(96,98,146,.25)}
+#downloadSleepXlsxBtn{border:1px solid transparent;transition:border-color .18s ease, box-shadow .18s ease}
+#downloadSleepXlsxBtn.clicked-edge{border-color:#007a31;box-shadow:0 0 0 2px rgba(0,122,49,.20),0 0 18px rgba(0,122,49,.35)}
+    .small{font-size:12px;color:#8fa0d2}
+    .section-title{margin:4px 0 12px;font-size:18px;font-weight:700}
+    .chart-title-lock{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:22px}
+    .table-wrap{overflow:auto;max-height:480px;border:1px solid var(--line);border-radius:14px}
+    table{border-collapse:collapse;width:100%;background:#ffffff}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+    th{position:sticky;top:0;background:#f5f7ff;font-size:13px;color:#1b2540}
+    tr:hover td{background:#f4f7ff}
+    canvas{max-height:320px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
+    .tab{padding:10px 14px;border-radius:999px;background:#ffffff;color:var(--text);cursor:pointer;font-weight:600;border:1px solid #7690f3;box-shadow:0 0 12px rgba(105,105,159,.22)}
+    .tab.active{background:#5988f3;color:#ffffff;border-color:#5988f3;box-shadow:0 0 18px rgba(89,136,243,.28)}
+    .hidden{display:none}
+    #resultArea{width:100%;margin:0 auto}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#eef3ff;color:#2342ad;font-size:12px;font-weight:700;box-shadow:0 0 8px rgba(118,144,243,.16)}
+    .ok{color:var(--good)}
+    .warn{color:var(--warn)}
+    
+    input::placeholder{color:#b6c2e1;opacity:.85}
+    input[type="file"]{color:var(--muted)}
+    .table-wrap{overflow:auto;max-height:480px;border:1px solid #7690f3;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(118,144,243,.08), 0 0 18px rgba(105,105,159,.14)}
+    #sleepListTable table{min-width:1600px}
+
+    canvas{max-height:360px;filter:drop-shadow(0 0 12px rgba(96,98,146,.18))}
+
+    @media (max-width: 1000px){
+      .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+      .dashboard-lower,.dashboard-lower-left{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sales Analysis App</h1>
+  <p>Open this file in Chrome, upload one or more Excel files, and the analysis runs entirely in your browser.</p>
+  <p class="small">Rules built in: use <b>Q-column amount logic</b>, keep negative values, convert text amounts into real numbers, and generate sleeping-member analysis.</p>
+
+  
+  
+<div class="card control-panel">
+    <div class="control-top">
+      <div class="control-left">
+        <div class="upload-box">
+          <label for="files">Upload Excel files (.xls / .xlsx)</label>
+          <input id="files" type="file" accept=".xls,.xlsx" multiple />
+          <div class="small">Upload one or more files, then run analysis in your browser.</div>
+        </div>
+
+        <div class="button-group">
+          <div class="analyze-wrap">
+            <div class="analyze-spinner" aria-hidden="true"></div>
+            <button id="analyzeBtn" class="btn">Run analysis</button>
+          </div>
+          <button id="downloadSleepXlsxBtn" class="light btn">Download</button>
+        </div>
+
+        <div class="status-row">
+          <span id="status"></span>
+        </div>
+      </div>
+
+      
+<div class="field-grid">
+          
+<div class="col control-field" data-control="dashboardDateRange" style="grid-column: span 2;">
+  <label>Evaluation time</label>
+  <div class="filter-dropdown" id="dashboardDateDropdown">
+    <button type="button" class="filter-trigger" id="dashboardDateTrigger">
+      <span class="range-trigger-text" id="dashboardDateTriggerText">Select date range</span>
+      <span class="filter-caret">▾</span>
+    </button>
+    <div class="filter-menu hidden" id="dashboardDateMenu">
+      <div class="range-grid">
+        <div>
+          <div class="menu-label">Start date</div>
+          <input id="dashboardStartDate" type="date" />
+        </div>
+        <div>
+          <div class="menu-label">End date</div>
+          <input id="dashboardEndDate" type="date" />
+        </div>
+      </div>
+      <div class="range-apply">
+        <button type="button" class="light btn" id="applyDateRangeBtn" style="min-height:38px;padding:8px 12px">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+          <div class="multi-grid control-field" data-control="dashboardMultiFilters">
+            <div class="col">
+              <label>Store</label>
+              <div class="filter-dropdown" id="dashboardStoreDropdown">
+                <button type="button" class="filter-trigger" id="dashboardStoreTrigger">
+                  <span id="dashboardStoreTriggerText">All stores</span>
+                  <span class="filter-caret">▾</span>
+                </button>
+                <div class="filter-menu hidden" id="dashboardStoreMenu">
+                  <input id="dashboardStoreSearch" class="store-search-input" type="text" placeholder="Search store" />
+                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearStoreBtn">Clear</button></div>
+                  <div id="dashboardStoreOptions" class="store-options"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <label>Salespeople</label>
+              <div class="filter-dropdown" id="dashboardSalespersonDropdown">
+                <button type="button" class="filter-trigger" id="dashboardSalespersonTrigger">
+                  <span id="dashboardSalespersonTriggerText">All salespeople</span>
+                  <span class="filter-caret">▾</span>
+                </button>
+                <div class="filter-menu hidden" id="dashboardSalespersonMenu">
+                  <input id="dashboardSalespersonSearch" class="store-search-input" type="text" placeholder="Search salesperson" />
+                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearSalespeopleBtn">Clear</button></div>
+                  <div id="dashboardSalespersonOptions" class="store-options"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col control-field" data-control="sleepDays">
+            <label for="sleepDays">Sleeping days</label>
+            <input id="sleepDays" type="number" value="90" min="1" />
+          </div>
+          <div class="col control-field" data-control="sleepMinOrders">
+            <label for="sleepMinOrders">Min member orders</label>
+            <input id="sleepMinOrders" type="number" value="2" min="1" />
+          </div>
+          <div class="col control-field" data-control="sleepMinAmount">
+            <label for="sleepMinAmount">Min member spend</label>
+            <input id="sleepMinAmount" type="number" value="1000" min="0" step="100" />
+          </div>
+          <div class="col control-field" data-control="aclassMinAmount">
+            <label for="aclassMinAmount">A-class min spend</label>
+            <input id="aclassMinAmount" type="number" value="3000" min="0" step="100" />
+          </div>
+          <div class="col control-field" data-control="filterSalesperson">
+            <label for="filterSalesperson">Filter by salesperson</label>
+            <select id="filterSalesperson" class="control-select">
+              <option value="">All salespeople</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultArea" class="hidden">
+    <div class="grid grid-4" style="margin-top:16px">
+      <div class="card kpi"><div class="label">Total Sales</div><div class="value" id="kpiSales">-</div></div>
+      <div class="card kpi"><div class="label">Total Orders</div><div class="value" id="kpiOrders">-</div></div>
+      <div class="card kpi"><div class="label">Member Registration Rate</div><div class="value" id="kpiReg">-</div></div>
+      <div class="card kpi"><div class="label">Repurchase Rate</div><div class="value" id="kpiRep">-</div></div>
+      <div class="card kpi"><div class="label">Avg Repurchase Times</div><div class="value" id="kpiRepTimes">-</div></div>
+      <div class="card kpi"><div class="label">Sleeping Members</div><div class="value" id="kpiSleep">-</div></div>
+      <div class="card kpi"><div class="label">A-Class Sleeping Members</div><div class="value" id="kpiASleep">-</div></div>
+      <div class="card kpi"><div class="label">Files Loaded</div><div class="value" id="kpiFiles">-</div></div>
+    </div>
+
+    <div class="tabs" style="margin-top:16px">
+      <div class="tab active" data-tab="dashboard">Dashboard</div>
+      <div class="tab" data-tab="rankings">Rankings</div>
+      <div class="tab" data-tab="members">Members</div>
+      <div class="tab" data-tab="sleeping">Sleeping Members</div>
+      <div class="tab" data-tab="validation">Validation</div>
+    </div>
+
+    <div id="dashboard" class="tab-panel">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-title chart-title-lock">Monthly Sales Trend</div>
+          <div class="small">Click a card below to switch charts. Double-click a top chart card to reset.</div>
+          <canvas id="monthlyChart"></canvas>
+        </div>
+        <div class="card">
+          <div class="section-title chart-title-lock">Repurchase Structure</div>
+          <div class="small">The right chart changes together with the left chart.</div>
+          <canvas id="repurchaseChart"></canvas>
+        </div>
+      </div>
+      <div class="dashboard-lower">
+        <div class="dashboard-lower-left">
+          <div class="card" id="topStoresCard" style="cursor:pointer">
+            <div class="section-title">Top Stores</div>
+            <div class="small">Click to update the two charts</div>
+            <div id="topStores" style="max-height:420px;overflow:auto"></div>
+          </div>
+          <div class="card" id="topSalespeopleCard" style="cursor:pointer">
+            <div class="section-title">Top Salespeople</div>
+            <div class="small">Click to update the two charts</div>
+            <div id="topSalespeople" style="max-height:420px;overflow:auto"></div>
+          </div>
+        </div>
+        <div class="card" id="topProductsCard" style="cursor:pointer">
+          <div class="section-title">Top Products</div>
+          <div class="small">Click to update the two charts</div>
+          <div id="topProducts" style="max-height:420px;overflow:auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="rankings" class="tab-panel hidden">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-title">Ranking Trend / Distribution</div>
+          <canvas id="rankingsLineChart"></canvas>
+        </div>
+        <div class="card">
+          <div class="section-title">Ranking Comparison</div>
+          <canvas id="rankingsBarChart"></canvas>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-top:16px;align-items:start;overflow-x:auto;padding:6px 6px 10px">
+        <div class="card" id="rankingsStoreCard" style="cursor:pointer;min-width:320px">
+          <div class="section-title">Store Performance Ranking</div>
+          <div class="small">Click to update the two charts above</div>
+          <div id="rankingsStoreMini" style="max-height:360px;overflow:auto"></div>
+        </div>
+        <div class="card" id="rankingsSalespersonCard" style="cursor:pointer;min-width:320px">
+          <div class="section-title">Salesperson Performance Ranking</div>
+          <div class="small">Click to update the two charts above</div>
+          <div id="rankingsSalespersonMini" style="max-height:360px;overflow:auto"></div>
+        </div>
+        <div class="card" id="rankingsProductCard" style="cursor:pointer;min-width:320px">
+          <div class="section-title">Product Ranking</div>
+          <div class="small">Click to update the two charts above</div>
+          <div id="rankingsProductMini" style="max-height:360px;overflow:auto"></div>
+        </div>
+        <div class="card" id="rankingsTicketCard" style="cursor:pointer;min-width:320px">
+          <div class="section-title">Average Ticket Ranking</div>
+          <div class="small">Click to update the two charts above</div>
+          <div id="rankingsTicketMini" style="max-height:360px;overflow:auto"></div>
+        </div>
+      </div>
+
+      <div class="card" id="storeRankingCard" style="margin-top:16px">
+        <div class="section-title" id="storeRankingTitle" style="cursor:pointer">Store Performance Ranking</div><div class="small">Click section titles below to change the two charts above.</div>
+        <div class="table-wrap" id="storeRankTable"></div>
+      </div>
+      <div class="card" id="salespersonRankingCard" style="margin-top:16px">
+        <div class="section-title" id="salespersonRankingTitle" style="cursor:pointer">Salesperson Performance Ranking</div>
+        <div class="table-wrap" id="salesRankTable"></div>
+      </div>
+      <div class="card" id="productRankingCard" style="margin-top:16px">
+        <div class="section-title" id="productRankingTitle" style="cursor:pointer">Product Ranking</div>
+        <div class="table-wrap" id="productRankTable"></div>
+      </div>
+      <div class="card" id="ticketRankingCard" style="margin-top:16px">
+        <div class="section-title" id="ticketRankingTitle" style="cursor:pointer">Average Ticket Ranking</div>
+        <div class="table-wrap" id="ticketRankTable"></div>
+      </div>
+    </div>
+
+    <div id="members" class="tab-panel hidden">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-title">Member Spend Trend</div>
+          <canvas id="membersLineChart"></canvas>
+        </div>
+        <div class="card">
+          <div class="section-title">Top Member Spend</div>
+          <canvas id="membersBarChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="memberRankingCard" style="margin-top:16px">
+        <div class="section-title" id="memberRankingTitle" style="cursor:pointer">Member Spend Ranking</div><div class="small">Click this title to refresh the two charts above from member ranking.</div>
+        <div class="table-wrap" id="memberRankTable"></div>
+      </div>
+    </div>
+
+    <div id="sleeping" class="tab-panel hidden">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-title">Sleeping Member Trend</div>
+          <canvas id="sleepingLineChart"></canvas>
+        </div>
+        <div class="card">
+          <div class="section-title">Sleeping Member Comparison</div>
+          <canvas id="sleepingBarChart"></canvas>
+        </div>
+      </div>
+      <div class="sleep-row" style="margin-top:16px">
+        <div class="card sleep-card" id="sleepWakeListCard" style="cursor:pointer">
+          <div class="section-title" id="sleepWakeListTitle" style="cursor:pointer">Sleeping Member Wake-up List</div>
+          <div class="small">Click this card to update the two charts above. Scroll inside to see more.</div>
+          <div class="table-wrap" id="sleepListTable"></div>
+        </div>
+        <div class="card sleep-card" id="sleepByStoreCard" style="cursor:pointer">
+          <div class="section-title" id="sleepByStoreTitle" style="cursor:pointer">Sleeping Members by Store</div>
+          <div class="small">Click this card to update the two charts above.</div>
+          <div class="table-wrap" id="sleepByStoreTable"></div>
+        </div>
+      </div>
+      <div class="card" id="sleepSummaryCard" style="margin-top:16px">
+        <div class="section-title" id="sleepSummaryTitle">Sleeping Member Summary</div>
+        <div id="sleepSummary"></div>
+      </div>
+    </div>
+
+    <div id="validation" class="tab-panel hidden">
+      <div class="card">
+        <div class="section-title">File Validation</div>
+        <div class="table-wrap" id="fileCheckTable"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="section-title">Resolved Column Mapping</div>
+        <div class="table-wrap" id="mappingTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const HEADER_CANDIDATES = {
+  store: ['门店','门店名称','店铺','所属门店','Store','Store Name'],
+  salesperson: ['营业员','销售员','导购','员工','顾问','Sales','Salesperson'],
+  product: ['商品名称','商品','品名','项目名称','Product','Product Name'],
+  amount: ['总金额','实收','业绩','金额','合计','Amount','Total Amount'],
+  qty: ['数量','件数','销售数量','Qty','Quantity'],
+  member_id: ['会员编号','会员ID','卡号','Member ID','Customer ID'],
+  member_name: ['会员姓名','会员名称','姓名','客户姓名','Member Name','Customer Name'],
+  phone: ['手机号','手机','电话','联系电话','Phone','Mobile'],
+  date: ['消费时间','日期','开单日期','销售日期','Date','Datetime','Time'],
+  order_no: ['单号','订单号','销售单号','流水号','Order No','Order ID'],
+};
+
+Chart.register(ChartDataLabels);
+
+const hoverGuidePlugin = {
+  id: 'hoverGuidePlugin',
+  afterDatasetsDraw(chart) {
+    const active = chart.tooltip && chart.tooltip.getActiveElements ? chart.tooltip.getActiveElements() : [];
+    if (!active || !active.length) return;
+    const {ctx, chartArea:{top,bottom}} = chart;
+    const x = active[0].element.x;
+    ctx.save();
+    ctx.setLineDash([6,6]);
+    ctx.strokeStyle = 'rgba(75, 85, 99, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+Chart.register(hoverGuidePlugin);
+
+let appState = {
+  results: null,
+  charts: {},
+  selectedStores: new Set(),
+  selectedSalespeople: new Set()
+};
+
+function syncResultAreaToControlPanel(){
+  const controlPanel = document.querySelector('.control-panel');
+  const resultArea = document.getElementById('resultArea');
+  if (!controlPanel || !resultArea) return;
+  resultArea.style.maxWidth = controlPanel.offsetWidth + 'px';
+  resultArea.style.margin = '0 auto';
+}
+
+function colLetterToIndex(col){
+  col = String(col || '').trim().toUpperCase();
+  let value = 0;
+  for (const ch of col){ value = value * 26 + (ch.charCodeAt(0) - 64); }
+  return value - 1;
+}
+function normalizeText(v){ return v == null ? '' : String(v).trim(); }
+function toNumber(v){
+  if (v == null || v === '') return NaN;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  let s = String(v).trim().replaceAll(',', '').replaceAll('¥', '').replaceAll('￥', '').replace(/\s+/g, '');
+  s = s.replace(/\(([-\d.]+)\)/g, '-$1');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+function toDate(v){
+  if (v == null || v === '') return null;
+  if (v instanceof Date && !isNaN(v)) return v;
+  if (typeof v === 'number'){
+    const parsed = XLSX.SSF.parse_date_code(v);
+    if (parsed) return new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, parsed.S || 0);
+  }
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}
+function bestHeaderMatch(headers, candidates){
+  const normalized = headers.map(h => ({raw:h, norm:normalizeText(h).toLowerCase()}));
+  for (const cand of candidates){
+    const found = normalized.find(h => h.norm === cand.toLowerCase());
+    if (found) return found.raw;
+  }
+  for (const cand of candidates){
+    const found = normalized.find(h => h.norm.includes(cand.toLowerCase()));
+    if (found) return found.raw;
+  }
+  return null;
+}
+function inferColumnMap(headers){
+  const mapping = {};
+  for (const [key, candidates] of Object.entries(HEADER_CANDIDATES)) mapping[key] = bestHeaderMatch(headers, candidates);
+  return mapping;
+}
+function maybeDropLastSummaryRow(rows){
+  if (rows.length < 2) return rows;
+  const textBlob = Object.values(rows[rows.length - 1]).map(normalizeText).join(' ').toLowerCase();
+  if (['合计','汇总','总计','summary','total'].some(w => textBlob.includes(w))) return rows.slice(0, -1);
+  return rows;
+}
+function groupBy(array, keyFn){
+  const map = new Map();
+  for (const item of array){
+    const k = keyFn(item);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(item);
+  }
+  return map;
+}
+function sum(arr, key){ return arr.reduce((a,b)=>a+(Number(b[key])||0),0); }
+function uniqueCount(arr, key){ return new Set(arr.map(x=>x[key])).size; }
+function fmtCurrency(n){ const sign = n < 0 ? '-' : ''; return sign + '¥' + Math.abs(n||0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtInt(n){ return (n || 0).toLocaleString(); }
+function fmtPct(n){ return ((n || 0) * 100).toFixed(1) + '%'; }
+function shortNumber(n){
+  const num = Number(n || 0);
+  if (Math.abs(num) >= 100000000) return (num/100000000).toFixed(2) + 'e';
+  if (Math.abs(num) >= 10000) return (num/10000).toFixed(1) + 'w';
+  return num.toLocaleString();
+}
+function ymd(date){
+  if (!date) return '';
+  if (typeof date === 'string') {
+    const d = new Date(date);
+    if (!isNaN(d)) date = d;
+    else return String(date);
+  }
+  if (!(date instanceof Date)) {
+    const d = new Date(date);
+    if (!isNaN(d)) date = d;
+    else return '';
+  }
+  return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
+}
+function ym(date){
+  if (!date) return '';
+  return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0');
+}
+async function parseWorkbook(file){
+  const data = await file.arrayBuffer();
+  const wb = XLSX.read(data, {type:'array', cellDates:true});
+  const firstSheet = wb.Sheets[wb.SheetNames[0]];
+  let rows = XLSX.utils.sheet_to_json(firstSheet, {defval:'', raw:false});
+  return maybeDropLastSummaryRow(rows);
+}
+async function prepareFiles(files, overrides){
+  const cleaned = [], mappings = [];
+  for (const file of files){
+    const rows = await parseWorkbook(file);
+    const headers = rows.length ? Object.keys(rows[0]) : [];
+    const inferred = inferColumnMap(headers);
+    const resolved = {};
+    for (const field of ['store','salesperson','product','amount','qty','member_id','member_name','phone','date','order_no']){
+      if (overrides[field] && headers.includes(overrides[field])) resolved[field] = overrides[field];
+      else if (inferred[field]) resolved[field] = inferred[field];
+    }
+    for (const [field, letter] of [['amount','Q'],['product','E'],['salesperson','AA']]){
+      if (!resolved[field]){
+        const idx = colLetterToIndex(letter);
+        if (idx >= 0 && idx < headers.length) resolved[field] = headers[idx];
+      }
+    }
+    mappings.push({file:file.name, ...resolved});
+    let seq = 0;
+    for (const row of rows){
+      const amount = toNumber(resolved.amount ? row[resolved.amount] : null);
+      if (!Number.isFinite(amount)) continue;
+      seq += 1;
+      const date = toDate(resolved.date ? row[resolved.date] : null);
+      const member_id = normalizeText(resolved.member_id ? row[resolved.member_id] : '');
+      const member_name = normalizeText(resolved.member_name ? row[resolved.member_name] : '');
+      const phone = normalizeText(resolved.phone ? row[resolved.phone] : '');
+      const member_key = member_id || phone || member_name || '';
+      cleaned.push({
+        source_file: file.name,
+        store: normalizeText(resolved.store ? row[resolved.store] : '') || 'Unregistered',
+        salesperson: normalizeText(resolved.salesperson ? row[resolved.salesperson] : '') || 'Unregistered',
+        product: normalizeText(resolved.product ? row[resolved.product] : '') || 'Unregistered',
+        amount,
+        qty: Number.isFinite(toNumber(resolved.qty ? row[resolved.qty] : 1)) ? toNumber(resolved.qty ? row[resolved.qty] : 1) : 1,
+        member_id,
+        member_name,
+        phone,
+        member_key,
+        date,
+        order_no: normalizeText(resolved.order_no ? row[resolved.order_no] : ''),
+        is_member_order: !!(member_key || member_name),
+        year_month: date ? ym(date) : '',
+        order_key: file.name + '|' + (normalizeText(resolved.order_no ? row[resolved.order_no] : '') || seq)
+      });
+    }
+  }
+  return { cleaned, mappings };
+}
+function analyze(cleaned, cfg){
+  const byOrder = groupBy(cleaned, r => r.order_key);
+  const orders = [...byOrder.entries()].map(([key, rows]) => ({
+    order_key:key, order_no:rows[0].order_no, date:rows[0].date, store:rows[0].store, salesperson:rows[0].salesperson,
+    member_key:rows[0].member_key, member_id:rows[0].member_id, member_name:rows[0].member_name, phone:rows[0].phone,
+    performance:sum(rows,'amount'), is_member_order:rows[0].is_member_order
+  }));
+  const memberOrders = orders.filter(r => r.is_member_order);
+
+  const aggregateRank = (rows, key, amountKey='amount') => [...groupBy(rows, r => r[key] || 'Unregistered').entries()]
+    .map(([k, items]) => ({[key]:k, performance:sum(items, amountKey)}))
+    .sort((a,b)=>b.performance-a.performance);
+
+  const storeRank = aggregateRank(cleaned, 'store');
+  const salespersonRank = aggregateRank(cleaned, 'salesperson');
+  const productRank = [...groupBy(cleaned, r => r.product || 'Unregistered').entries()]
+    .map(([product, items]) => ({ product, sales_amount:sum(items,'amount'), sales_qty:sum(items,'qty'), sales_orders:uniqueCount(items,'order_key') }))
+    .sort((a,b)=>b.sales_amount-a.sales_amount);
+  const ticketRank = [...groupBy(orders, r => r.salesperson || 'Unregistered').entries()]
+    .map(([salesperson, items]) => ({ salesperson, total_sales:sum(items,'performance'), order_count:items.length, avg_ticket: items.length ? sum(items,'performance')/items.length : 0 }))
+    .sort((a,b)=>(b.avg_ticket-a.avg_ticket)||(b.total_sales-a.total_sales));
+
+  const memberRank = [...groupBy(memberOrders, r => r.member_key + '|||' + r.member_name).entries()]
+    .map(([compound, items]) => {
+      const sorted = [...items].sort((a,b)=>(a.date?.getTime()||0)-(b.date?.getTime()||0));
+      const last = sorted[sorted.length-1];
+      const [member_key, member_name] = compound.split('|||');
+      const total_spend = sum(items,'performance');
+      const order_count = items.length;
+      return {
+        member_key, member_name, total_spend, order_count, last_purchase_date:last?.date || null,
+        phone:last?.phone || '', latest_store:last?.store || '', latest_salesperson:last?.salesperson || '',
+        avg_ticket: order_count ? total_spend / order_count : 0, repurchase_times: Math.max(0, order_count - 1)
+      };
+    }).sort((a,b)=>b.total_spend-a.total_spend);
+
+  const latestDataDate = cleaned.filter(x=>x.date).sort((a,b)=>b.date-a.date)[0]?.date || new Date();
+  const analysisDate = cfg.analysisDate || latestDataDate;
+  const detailByMember = groupBy(cleaned.filter(r=>r.is_member_order), r => r.member_key + '|||' + r.member_name);
+  const favProductMap = new Map(), recentMap = new Map();
+
+  for (const [k, items] of detailByMember.entries()){
+    const prodByAmt = [...groupBy(items, x => x.product).entries()].map(([product, rows]) => ({product, amount:sum(rows,'amount')})).sort((a,b)=>b.amount-a.amount);
+    favProductMap.set(k, prodByAmt[0]?.product || '');
+    recentMap.set(k, [...items].sort((a,b)=>(b.date?.getTime()||0)-(a.date?.getTime()||0))[0] || null);
+  }
+
+  const sleepList = memberRank.map(m => {
+    const key = m.member_key + '|||' + m.member_name;
+    const recent = recentMap.get(key);
+    const sleep_days = m.last_purchase_date ? Math.floor((analysisDate - m.last_purchase_date) / 86400000) : null;
+    let priority = 'C';
+    if (m.total_spend >= cfg.aclassMinAmount || m.order_count >= cfg.aclassMinOrders) priority = 'A';
+    else if (m.total_spend >= Math.max(cfg.sleepMinAmount * 2, 2000) || m.order_count >= Math.max(cfg.sleepMinOrders + 1, 3)) priority = 'B';
+    let risk_level = 'Warning';
+    if (sleep_days >= 180) risk_level = 'Deep Sleep';
+    else if (sleep_days >= 91) risk_level = 'High Risk';
+    const contact_channel = priority === 'A' ? 'Phone + 1:1 WeChat' : (m.order_count >= 3 ? '1:1 WeChat + Coupon' : 'SMS / Bulk WeChat');
+    const favorite_product = favProductMap.get(key) || '';
+    const suggested_script = favorite_product
+      ? 'We saved a member-only offer for your usual item: ' + favorite_product + '. Would you like me to reserve it for you?'
+      : 'We prepared a returning-member benefit for you. Would you like us to reserve a visit slot this week?';
+    return { ...m, sleep_days, last_store:recent?.store || m.latest_store || '', last_salesperson:recent?.salesperson || m.latest_salesperson || '', recent_product:recent?.product || '', favorite_product, priority, risk_level, contact_channel, suggested_script };
+  }).filter(m => m.order_count >= cfg.sleepMinOrders && m.total_spend >= cfg.sleepMinAmount && m.sleep_days >= cfg.sleepDays)
+    .sort((a,b)=>(a.priority.localeCompare(b.priority))||(b.total_spend-a.total_spend)||(b.sleep_days-a.sleep_days));
+
+  const monthly = [...groupBy(cleaned.filter(r=>r.year_month), r => r.year_month).entries()]
+    .map(([year_month, items]) => ({year_month, sales_amount:sum(items,'amount'), store_count:new Set(items.map(x=>x.store).filter(Boolean)).size}))
+    .sort((a,b)=>a.year_month.localeCompare(b.year_month));
+
+  const bucketCounter = {};
+  for (const m of memberRank){
+    const bucket = m.order_count === 1 ? '1 order' : m.order_count === 2 ? '2 orders' : m.order_count === 3 ? '3 orders' : m.order_count <= 5 ? '4-5 orders' : '6+ orders';
+    bucketCounter[bucket] = (bucketCounter[bucket] || 0) + 1;
+  }
+  const repurchaseDistribution = Object.entries(bucketCounter).map(([order_bucket, member_count]) => ({order_bucket, member_count}));
+
+  const fileCheck = [...groupBy(cleaned, r => r.source_file).entries()].map(([source_file, items]) => ({
+    source_file, included_rows:items.length, order_count:uniqueCount(items,'order_key'), q_sum:sum(items,'amount'),
+    negative_rows:items.filter(x=>x.amount<0).length, negative_sum:items.filter(x=>x.amount<0).reduce((a,b)=>a+b.amount,0)
+  })).sort((a,b)=>a.source_file.localeCompare(b.source_file));
+
+  const regRate = orders.length ? memberOrders.length / orders.length : 0;
+  const repRate = memberRank.length ? memberRank.filter(x=>x.order_count>=2).length / memberRank.length : 0;
+  const avgRepTimes = memberRank.filter(x=>x.order_count>=2).length ? memberRank.filter(x=>x.order_count>=2).reduce((a,b)=>a+b.repurchase_times,0) / memberRank.filter(x=>x.order_count>=2).length : 0;
+
+  const sleepByStore = [...groupBy(sleepList, x => x.last_store || 'Unknown').entries()].map(([last_store, items]) => ({
+    last_store, sleeping_members:items.length, historical_spend:items.reduce((a,b)=>a+b.total_spend,0)
+  })).sort((a,b)=>b.sleeping_members-a.sleeping_members);
+
+  return {
+    kpis: {
+      totalSales: cleaned.reduce((a,b)=>a+b.amount,0),
+      totalOrders: orders.length,
+      memberOrders: memberOrders.length,
+      memberRegistrationRate: regRate,
+      uniqueMembers: memberRank.length,
+      repurchasingMembers: memberRank.filter(x=>x.order_count>=2).length,
+      repurchaseRate: repRate,
+      averageRepurchaseTimes: avgRepTimes,
+      sleepingMembers: sleepList.length,
+      aClassSleepingMembers: sleepList.filter(x=>x.priority==='A').length,
+      filesLoaded: fileCheck.length
+    },
+    storeRank, salespersonRank, productRank, ticketRank, memberRank, sleepList, monthly, repurchaseDistribution, fileCheck, sleepByStore,
+    sleepSummary: [
+      { metric:'Analysis Cutoff Date', value: ymd(analysisDate) },
+      { metric:'Sleeping Members', value: sleepList.length },
+      { metric:'Sleeping Members Historical Spend', value: sleepList.reduce((a,b)=>a+b.total_spend,0) },
+      { metric:'A-Class Members', value: sleepList.filter(x=>x.priority==='A').length },
+      { metric:'A-Class Historical Spend', value: sleepList.filter(x=>x.priority==='A').reduce((a,b)=>a+b.total_spend,0) },
+      { metric:'B-Class Members', value: sleepList.filter(x=>x.priority==='B').length },
+      { metric:'C-Class Members', value: sleepList.filter(x=>x.priority==='C').length }
+    ]
+  };
+}
+function renderTable(containerId, rows, formatters = {}, addIndex = false){
+  const el = document.getElementById(containerId);
+  if (!rows || !rows.length){ el.innerHTML = '<p class="small" style="padding:12px">No data.</p>'; return; }
+  const cols = Object.keys(rows[0]);
+  let headerCells = addIndex ? '<th style="width:70px">No.</th>' : '';
+  headerCells += cols.map(c => '<th>' + c + '</th>').join('');
+  let html = '<table><thead><tr>' + headerCells + '</tr></thead><tbody>';
+  rows.forEach((row, idx) => {
+    let rowHtml = addIndex ? '<td>' + (idx + 1) + '</td>' : '';
+    rowHtml += cols.map(c => {
+      let v = row[c];
+      if (v instanceof Date) v = ymd(v);
+      if (formatters[c]) v = formatters[c](v);
+      return '<td>' + (v ?? '') + '</td>';
+    }).join('');
+    html += '<tr>' + rowHtml + '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+function renderMiniList(elId, rows, keyField, valueField, formatter){
+  const el = document.getElementById(elId);
+  if (!rows.length){ el.innerHTML = '<p class="small">No data.</p>'; return; }
+  const rowStyle = 'display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)';
+  const nameStyle = 'margin-left:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+  const listHtml = rows.map((r,i) =>
+    '<div style="' + rowStyle + '">' +
+    '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1"><span class="pill">#' + (i+1) + '</span><span style="' + nameStyle + '" title="' + String(r[keyField] ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '">' + r[keyField] + '</span></div>' +
+    '<div style="font-weight:700;flex-shrink:0">' + formatter(r[valueField]) + '</div></div>'
+  ).join('');
+  el.innerHTML = listHtml;
+}
+function destroyCharts(){
+  for (const c of Object.values(appState.charts)){ if (c) c.destroy(); }
+  appState.charts = {};
+}
+
+
+function getChartPalette(n){
+  const palette = [
+    'rgba(59, 130, 246, 0.75)',   // blue
+    'rgba(139, 92, 246, 0.75)',   // purple
+    'rgba(16, 185, 129, 0.75)',   // emerald
+    'rgba(245, 158, 11, 0.75)',   // amber
+    'rgba(239, 68, 68, 0.75)',    // red
+    'rgba(236, 72, 153, 0.75)',   // pink
+    'rgba(14, 165, 233, 0.75)',   // sky
+    'rgba(34, 197, 94, 0.75)',    // green
+    'rgba(249, 115, 22, 0.75)',   // orange
+    'rgba(168, 85, 247, 0.75)'    // violet
+  ];
+  const borders = [
+    'rgba(59, 130, 246, 1)',
+    'rgba(139, 92, 246, 1)',
+    'rgba(16, 185, 129, 1)',
+    'rgba(245, 158, 11, 1)',
+    'rgba(239, 68, 68, 1)',
+    'rgba(236, 72, 153, 1)',
+    'rgba(14, 165, 233, 1)',
+    'rgba(34, 197, 94, 1)',
+    'rgba(249, 115, 22, 1)',
+    'rgba(168, 85, 247, 1)'
+  ];
+  return {
+    bg: Array.from({length:n}, (_,i) => palette[i % palette.length]),
+    border: Array.from({length:n}, (_,i) => borders[i % borders.length])
+  };
+}
+
+
+function setDownloadTarget(filename, sheets){
+  appState.downloadTarget = { filename, sheets };
+}
+function useDownloadTarget(){
+  if (!appState.results || !appState.downloadTarget) return;
+  downloadWorkbook(appState.downloadTarget.filename, appState.downloadTarget.sheets);
+}
+
+function selectedDashboardSalespeople(){
+  return [...appState.selectedSalespeople];
+}
+function populateSleepingSalespersonOptions(){
+  const select = document.getElementById('filterSalesperson');
+  if (!select || !appState.results?.originalCleaned) return;
+  const previousValue = select.value || '';
+  const sourceRows = getDashboardFilteredBaseRows();
+  const names = [...new Set(sourceRows.map(r => normalizeText(r.salesperson)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  select.innerHTML = '<option value="">All salespeople</option>' + names.map(name => '<option value="' + name.replace(/"/g, '&quot;') + '">' + name + '</option>').join('');
+  select.value = names.includes(previousValue) ? previousValue : '';
+}
+
+function updateDashboardSalespersonSelectedText(){
+  const el = document.getElementById('dashboardSalespersonTriggerText');
+  if (!el) return;
+  const selected = selectedDashboardSalespeople();
+  if (!selected.length) { el.textContent = 'All salespeople'; return; }
+  el.textContent = selected.length <= 2 ? selected.join(', ') : selected.length + ' salespeople';
+}
+function populateDashboardSalespersonOptions(){
+  const wrap = document.getElementById('dashboardSalespersonOptions');
+  if (!wrap || !appState.results?.originalCleaned) return;
+  const search = (document.getElementById('dashboardSalespersonSearch')?.value || '').trim().toLowerCase();
+  const prev = new Set(appState.selectedSalespeople);
+  const selectedStores = selectedDashboardStores();
+  const sourceRows = (appState.results.originalCleaned || []).filter(r => !selectedStores.length || selectedStores.includes(normalizeText(r.store)));
+  const names = [...new Set(sourceRows.map(r => normalizeText(r.salesperson)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const allowed = new Set(names);
+  appState.selectedSalespeople = new Set([...prev].filter(name => allowed.has(name)));
+  const filtered = names.filter(s => appState.selectedSalespeople.has(s) || !search || s.toLowerCase().includes(search));
+  const optionsHtml = filtered.map(name => {
+    const checked = appState.selectedSalespeople.has(name);
+    return '<label class="store-option"><input type="checkbox" value="' + name.replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '> <span>' + name + '</span></label>';
+  }).join('');
+  wrap.innerHTML = '<label class="store-option"><input type="checkbox" id="dashboardSalespeopleAllOption"> <span>All salespeople</span></label>' + (optionsHtml || '<div class="small">No matching salespeople</div>');
+  const allOpt = document.getElementById('dashboardSalespeopleAllOption');
+  if (allOpt) {
+    allOpt.checked = appState.selectedSalespeople.size === 0;
+    allOpt.addEventListener('change', () => {
+      if (allOpt.checked) {
+        appState.selectedSalespeople.clear();
+        wrap.querySelectorAll('input[type="checkbox"]').forEach(x => { if (x !== allOpt) x.checked = false; });
+        updateDashboardSalespersonSelectedText();
+        onGlobalFiltersChanged();
+      }
+    });
+  }
+  wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (cb === allOpt) return;
+    cb.addEventListener('change', () => {
+      const value = normalizeText(cb.value);
+      if (cb.checked) appState.selectedSalespeople.add(value);
+      else appState.selectedSalespeople.delete(value);
+      if (allOpt) allOpt.checked = false;
+      updateDashboardSalespersonSelectedText();
+      onGlobalFiltersChanged();
+    });
+  });
+  updateDashboardSalespersonSelectedText();
+}
+
+function selectedDashboardStores(){
+  return [...appState.selectedStores];
+}
+function updateDashboardStoreSelectedText(){
+  const el = document.getElementById('dashboardStoreTriggerText');
+  if (!el) return;
+  const selected = selectedDashboardStores();
+  if (!selected.length) { el.textContent = 'All stores'; return; }
+  el.textContent = selected.length <= 2 ? selected.join(', ') : selected.length + ' stores';
+}
+function populateDashboardStoreOptions(){
+  const wrap = document.getElementById('dashboardStoreOptions');
+  if (!wrap || !appState.results?.originalCleaned) return;
+  const search = (document.getElementById('dashboardStoreSearch')?.value || '').trim().toLowerCase();
+  const prev = new Set(appState.selectedStores);
+  const stores = [...new Set((appState.results.originalCleaned || []).map(r => normalizeText(r.store)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  appState.selectedStores = new Set([...prev].filter(store => stores.includes(store)));
+  const filtered = stores.filter(s => appState.selectedStores.has(s) || !search || s.toLowerCase().includes(search));
+  const optionsHtml = filtered.map(store => {
+    const checked = appState.selectedStores.has(store);
+    return '<label class="store-option"><input type="checkbox" value="' + store.replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '> <span>' + store + '</span></label>';
+  }).join('');
+  wrap.innerHTML = '<label class="store-option"><input type="checkbox" id="dashboardStoreAllOption"> <span>All stores</span></label>' + (optionsHtml || '<div class="small">No matching stores</div>');
+  const allOpt = document.getElementById('dashboardStoreAllOption');
+  if (allOpt) {
+    allOpt.checked = appState.selectedStores.size === 0;
+    allOpt.addEventListener('change', () => {
+      if (allOpt.checked) {
+        appState.selectedStores.clear();
+        wrap.querySelectorAll('input[type="checkbox"]').forEach(x => { if (x !== allOpt) x.checked = false; });
+        updateDashboardStoreSelectedText();
+        populateDashboardSalespersonOptions();
+        onGlobalFiltersChanged();
+      }
+    });
+  }
+  wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (cb === allOpt) return;
+    cb.addEventListener('change', () => {
+      const value = normalizeText(cb.value);
+      if (cb.checked) appState.selectedStores.add(value);
+      else appState.selectedStores.delete(value);
+      if (allOpt) allOpt.checked = false;
+      updateDashboardStoreSelectedText();
+      populateDashboardSalespersonOptions();
+      onGlobalFiltersChanged();
+    });
+  });
+  updateDashboardStoreSelectedText();
+}
+
+
+
+function updateDateRangeTriggerText(){
+  const el = document.getElementById('dashboardDateTriggerText');
+  const s = document.getElementById('dashboardStartDate')?.value || '';
+  const e = document.getElementById('dashboardEndDate')?.value || '';
+  if (!el) return;
+  if (s && e) el.textContent = `${s} ~ ${e}`;
+  else if (s) el.textContent = `${s} ~`;
+  else if (e) el.textContent = `~ ${e}`;
+  else el.textContent = 'Select date range';
+}
+function showOverlayLight(show){
+  let ov = document.getElementById('overlayLight');
+  if (show){
+    if (!ov){
+      ov = document.createElement('div');
+      ov.id = 'overlayLight';
+      ov.className = 'overlay-light';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', () => {
+        document.querySelectorAll('.filter-menu').forEach(m => m.classList.add('hidden'));
+        showOverlayLight(false);
+      });
+    }
+  } else if (ov){
+    ov.remove();
+  }
+}
+function renderKpisFromResults(results){
+  if (!results?.kpis) return;
+  document.getElementById('kpiSales').textContent = fmtCurrency(results.kpis.totalSales);
+  document.getElementById('kpiOrders').textContent = fmtInt(results.kpis.totalOrders);
+  document.getElementById('kpiReg').textContent = fmtPct(results.kpis.memberRegistrationRate);
+  document.getElementById('kpiRep').textContent = fmtPct(results.kpis.repurchaseRate);
+  document.getElementById('kpiRepTimes').textContent = Number(results.kpis.averageRepurchaseTimes || 0).toFixed(2);
+  document.getElementById('kpiSleep').textContent = fmtInt(results.kpis.sleepingMembers);
+  document.getElementById('kpiASleep').textContent = fmtInt(results.kpis.aClassSleepingMembers);
+  document.getElementById('kpiFiles').textContent = fmtInt(results.kpis.filesLoaded);
+}
+
+function toggleDropdown(menuId, forceOpen){
+  const menu = document.getElementById(menuId);
+  if (!menu) return;
+  const willOpen = forceOpen == null ? menu.classList.contains('hidden') : forceOpen;
+  document.querySelectorAll('.filter-menu').forEach(m => m.classList.add('hidden'));
+  if (willOpen) {
+    menu.classList.remove('hidden');
+    showOverlayLight(true);
+  } else {
+    showOverlayLight(false);
+  }
+}
+function clearActiveGlows(){
+  document.querySelectorAll('.active-glow').forEach(el => el.classList.remove('active-glow'));
+}
+function scrollContainerToTop(target){
+  const el = typeof target === 'string' ? document.getElementById(target) : target;
+  if (!el) return;
+  if (typeof el.scrollTo === 'function') el.scrollTo({ top: 0, behavior: 'smooth' });
+  else el.scrollTop = 0;
+}
+function playRunButtonBounce(){
+  const btn = document.getElementById('analyzeBtn');
+  if (!btn) return;
+  btn.classList.remove('run-bounce');
+  void btn.offsetWidth;
+  btn.classList.add('run-bounce');
+}
+function setAnalyzeLoading(show){
+  const btn = document.getElementById('analyzeBtn');
+  const wrap = document.querySelector('.analyze-wrap');
+  if (!btn) return;
+  if (wrap) wrap.classList.toggle('loading-ring', !!show);
+  btn.disabled = !!show;
+}
+function setActiveGlow(selector){
+  clearActiveGlows();
+  let el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+  if (el && el.classList.contains('section-title')) el = el.closest('.card');
+  if (el) el.classList.add('active-glow');
+}
+
+function renderRankingTabCharts(mode){
+  if (!appState.results) return;
+  const results = getActiveResults();
+  appState.rankingsMode = mode || 'store';
+  const commonLabelOpts = {
+    responsive:true,
+    maintainAspectRatio:false,
+    layout:{padding:{top:28,right:40,bottom:12,left:40}},
+    scales:{
+      x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+      y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
+    },
+    plugins:{
+      legend:{display:false,labels:{boxWidth:28,padding:16}},
+      datalabels:{
+        anchor:'end',
+        align:'end',
+        clamp:true,
+        clip:false,
+        offset:4,
+        formatter:(value)=>shortNumber(value),
+        font:{weight:'600',size:11},color:'#4b5563'
+      }
+    }
+  };
+
+  if (appState.charts.rankingsLine) appState.charts.rankingsLine.destroy();
+  if (appState.charts.rankingsBar) appState.charts.rankingsBar.destroy();
+
+  let rows = [];
+  let labels = [];
+  let values = [];
+  let title1 = 'Ranking Trend / Distribution';
+  let title2 = 'Ranking Comparison';
+
+  if (!mode || mode === 'store'){
+    setDownloadTarget('store_ranking.xlsx', [{ name:'Store Ranking', rows: results.storeRank || [] }]);
+    setActiveGlow('#rankingsStoreCard');
+    rows = results.storeRank.slice(0, 10);
+    labels = rows.map(x => x.store);
+    values = rows.map(x => x.performance);
+    title1 = 'Store Performance Trend';
+    title2 = 'Store Performance Comparison';
+  } else if (mode === 'salesperson'){
+    setDownloadTarget('salesperson_ranking.xlsx', [{ name:'Salesperson Ranking', rows: results.salespersonRank || [] }]);
+    setActiveGlow('#rankingsSalespersonCard');
+    rows = results.salespersonRank.slice(0, 10);
+    labels = rows.map(x => x.salesperson);
+    values = rows.map(x => x.performance);
+    title1 = 'Salesperson Performance Trend';
+    title2 = 'Salesperson Performance Comparison';
+  } else if (mode === 'product'){
+    setDownloadTarget('product_ranking.xlsx', [{ name:'Product Ranking', rows: results.productRank || [] }]);
+    setActiveGlow('#rankingsProductCard');
+    rows = results.productRank.slice(0, 10);
+    labels = rows.map(x => x.product);
+    values = rows.map(x => x.sales_amount);
+    title1 = 'Product Sales Trend';
+    title2 = 'Product Sales Comparison';
+  } else if (mode === 'ticket'){
+    setDownloadTarget('average_ticket_ranking.xlsx', [{ name:'Average Ticket Ranking', rows: results.ticketRank || [] }]);
+    setActiveGlow('#rankingsTicketCard');
+    rows = results.ticketRank.slice(0, 10);
+    labels = rows.map(x => x.salesperson);
+    values = rows.map(x => x.avg_ticket);
+    title1 = 'Average Ticket Trend';
+    title2 = 'Average Ticket Comparison';
+  }
+
+  const leftTitle = document.querySelector('#rankings .grid-2 .card:first-child .section-title');
+  const rightTitle = document.querySelector('#rankings .grid-2 .card:last-child .section-title');
+  if (leftTitle) leftTitle.textContent = title1;
+  if (rightTitle) rightTitle.textContent = title2;
+
+  appState.charts.rankingsLine = new Chart(document.getElementById('rankingsLineChart'), {
+    type:'line',
+    data:{
+      labels: labels,
+      datasets:[{label:title1, data: values, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}]
+    },
+    options: commonLabelOpts
+  });
+
+  appState.charts.rankingsBar = new Chart(document.getElementById('rankingsBarChart'), {
+    type:'bar',
+    data:{
+      labels: labels,
+      datasets:[{label:title2, data: values, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(values.length).bg, borderColor:getChartPalette(values.length).border, borderWidth:1}]
+    },
+    options: commonLabelOpts
+  });
+}
+
+function renderMembersTabCharts(mode){
+  if (!appState.results) return;
+  const results = getActiveResults();
+  appState.membersMode = mode || 'spend';
+  const commonLabelOpts = {
+    responsive:true,
+    maintainAspectRatio:false,
+    layout:{padding:{top:28,right:40,bottom:12,left:40}},
+    scales:{
+      x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+      y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
+    },
+    plugins:{
+      legend:{display:false,labels:{boxWidth:28,padding:16}},
+      datalabels:{
+        anchor:'end',
+        align:'end',
+        clamp:true,
+        clip:false,
+        offset:4,
+        formatter:(value)=>shortNumber(value),
+        font:{weight:'600',size:11},color:'#4b5563'
+      }
+    }
+  };
+
+  if (appState.charts.membersLine) appState.charts.membersLine.destroy();
+  if (appState.charts.membersBar) appState.charts.membersBar.destroy();
+
+  const rows = results.memberRank.slice(0,10);
+  const labels = rows.map(x => x.member_name || x.member_key);
+  const spendVals = rows.map(x => x.total_spend);
+  const ticketVals = rows.map(x => x.avg_ticket);
+  const repurchaseVals = rows.map(x => x.repurchase_times);
+
+  setDownloadTarget('member_spend_ranking.xlsx', [{ name:'Member Spend Ranking', rows: results.memberRank || [] }]);
+  setActiveGlow('#memberRankingCard');
+  let leftTitle = 'Member Spend Trend';
+  let rightTitle = 'Top Member Spend';
+  let leftData = spendVals;
+  let rightData = spendVals;
+  let leftLabel = 'Member Spend';
+  let rightLabel = 'Top Member Spend';
+
+  if (mode === 'ticket'){
+    leftTitle = 'Member Avg Ticket Trend';
+    rightTitle = 'Member Avg Ticket Comparison';
+    leftData = ticketVals;
+    rightData = ticketVals;
+    leftLabel = 'Avg Ticket';
+    rightLabel = 'Avg Ticket';
+  } else if (mode === 'repurchase'){
+    leftTitle = 'Member Repurchase Times Trend';
+    rightTitle = 'Member Repurchase Times Comparison';
+    leftData = repurchaseVals;
+    rightData = repurchaseVals;
+    leftLabel = 'Repurchase Times';
+    rightLabel = 'Repurchase Times';
+  }
+
+  const leftTitleEl = document.querySelector('#members .grid-2 .card:first-child .section-title');
+  const rightTitleEl = document.querySelector('#members .grid-2 .card:last-child .section-title');
+  if (leftTitleEl) leftTitleEl.textContent = leftTitle;
+  if (rightTitleEl) rightTitleEl.textContent = rightTitle;
+
+  if (document.getElementById('membersLineChart')){
+    appState.charts.membersLine = new Chart(document.getElementById('membersLineChart'), {
+      type:'line',
+      data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}] },
+      options: commonLabelOpts
+    });
+  }
+  if (document.getElementById('membersBarChart')){
+    appState.charts.membersBar = new Chart(document.getElementById('membersBarChart'), {
+      type:'bar',
+      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:1}] },
+      options: commonLabelOpts
+    });
+  }
+}
+
+function renderSleepingTabCharts(mode){
+  if (!appState.results) return;
+  const results = getActiveResults();
+  appState.sleepingMode = mode || 'store';
+  const commonLabelOpts = {
+    responsive:true,
+    maintainAspectRatio:false,
+    layout:{padding:{top:28,right:40,bottom:12,left:40}},
+    scales:{
+      x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+      y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
+    },
+    plugins:{
+      legend:{display:false,labels:{boxWidth:28,padding:16}},
+      datalabels:{
+        anchor:'end',
+        align:'end',
+        clamp:true,
+        clip:false,
+        offset:4,
+        formatter:(value)=>shortNumber(value),
+        font:{weight:'600',size:11},color:'#4b5563'
+      }
+    }
+  };
+
+  if (appState.charts.sleepingLine) appState.charts.sleepingLine.destroy();
+  if (appState.charts.sleepingBar) appState.charts.sleepingBar.destroy();
+
+  let labels = [];
+  let leftData = [];
+  let rightData = [];
+  let leftLabel = '';
+  let rightLabel = '';
+  let leftTitle = '';
+  let rightTitle = '';
+
+  if (!mode || mode === 'store'){
+    setDownloadTarget('sleeping_members_by_store.xlsx', [{ name:'Sleeping Members by Store', rows: results.sleepByStore || [] }]);
+    setActiveGlow('#sleepByStoreCard');
+    const rows = results.sleepByStore.slice(0,10);
+    labels = rows.map(x=>x.last_store);
+    leftData = rows.map(x=>x.sleeping_members);
+    rightData = rows.map(x=>x.historical_spend);
+    leftLabel = 'Sleeping Members';
+    rightLabel = 'Historical Spend';
+    leftTitle = 'Sleeping Members by Store';
+    rightTitle = 'Sleeping Members Historical Spend';
+  } else if (mode === 'list'){
+    setDownloadTarget('sleeping_member_wake_up_list.xlsx', [{ name:'Sleeping Member Wake-up List', rows: getFilteredSleepList() || results.sleepList || [] }]);
+    setActiveGlow('#sleepWakeListCard');
+    const rows = (getFilteredSleepList(results) || []).slice(0,10);
+    labels = rows.map(x=>x.member_name || x.member_key);
+    leftData = rows.map(x=>x.total_spend);
+    rightData = rows.map(x=>x.sleep_days);
+    leftLabel = 'Sleeping Member Spend';
+    rightLabel = 'Sleep Days';
+    leftTitle = 'Sleeping Member Wake-up List';
+    rightTitle = 'Sleeping Member Sleep Days';
+  }
+
+  const leftTitleEl = document.querySelector('#sleeping .grid-2 .card:first-child .section-title');
+  const rightTitleEl = document.querySelector('#sleeping .grid-2 .card:last-child .section-title');
+  if (leftTitleEl) leftTitleEl.textContent = leftTitle;
+  if (rightTitleEl) rightTitleEl.textContent = rightTitle;
+
+  if (document.getElementById('sleepingLineChart')){
+    appState.charts.sleepingLine = new Chart(document.getElementById('sleepingLineChart'), {
+      type:'line',
+      data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}] },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        layout:{padding:{top:28,right:40,bottom:12,left:40}},
+        scales:{
+          x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+          y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
+        },
+        plugins:{
+          legend:{display:false,labels:{boxWidth:28,padding:16}},
+          datalabels:{
+            align:'top',
+            anchor:'end',
+            clamp:true,
+            clip:false,
+            offset:4,
+            formatter:(value)=>shortNumber(value),
+            font:{weight:'600',size:11},color:'#4b5563'
+          }
+        }
+      }
+    });
+  }
+  if (document.getElementById('sleepingBarChart')){
+    appState.charts.sleepingBar = new Chart(document.getElementById('sleepingBarChart'), {
+      type:'bar',
+      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:1}] },
+      options: commonLabelOpts
+    });
+  }
+}
+
+function renderExtraTabCharts(results){
+  renderRankingTabCharts('store');
+  renderMembersTabCharts('spend');
+  renderSleepingTabCharts('store');
+}
+
+
+function getActiveResults(){
+  return getDashboardFilteredResults() || (appState.results ? appState.results.results : null);
+}
+function renderAllTablesFromResults(results){
+  if (!results) return;
+
+  renderMiniList('topStores', results.storeRank || [], 'store', 'performance', fmtCurrency);
+  renderMiniList('topSalespeople', results.salespersonRank || [], 'salesperson', 'performance', fmtCurrency);
+  renderMiniList('topProducts', results.productRank || [], 'product', 'sales_amount', fmtCurrency);
+
+  renderMiniList('rankingsStoreMini', results.storeRank || [], 'store', 'performance', fmtCurrency);
+  renderMiniList('rankingsSalespersonMini', results.salespersonRank || [], 'salesperson', 'performance', fmtCurrency);
+  renderMiniList('rankingsProductMini', results.productRank || [], 'product', 'sales_amount', fmtCurrency);
+  renderMiniList('rankingsTicketMini', results.ticketRank || [], 'salesperson', 'avg_ticket', fmtCurrency);
+
+  renderTable('storeRankTable', results.storeRank || [], {performance:fmtCurrency}, true);
+  renderTable('salesRankTable', results.salespersonRank || [], {performance:fmtCurrency}, true);
+  renderTable('productRankTable', results.productRank || [], {sales_amount:fmtCurrency, sales_qty:fmtInt, sales_orders:fmtInt}, true);
+  renderTable('ticketRankTable', results.ticketRank || [], {total_sales:fmtCurrency, order_count:fmtInt, avg_ticket:fmtCurrency}, true);
+  renderTable('memberRankTable', results.memberRank || [], {total_spend:fmtCurrency, order_count:fmtInt, last_purchase_date:v=>v?ymd(v):'', avg_ticket:fmtCurrency, repurchase_times:fmtInt}, true);
+  refreshSleepingTable(results);
+  renderTable('sleepByStoreTable', results.sleepByStore || [], {sleeping_members:fmtInt, historical_spend:fmtCurrency}, true);
+  renderTable('sleepSummary', results.sleepSummary || [], {value:v => typeof v === 'number' ? (String(v).includes('.') ? fmtCurrency(v) : fmtInt(v)) : v}, true);
+
+  if (appState.results?.results?.fileCheck) {
+    renderTable('fileCheckTable', appState.results.results.fileCheck, {included_rows:fmtInt, order_count:fmtInt, q_sum:fmtCurrency, negative_rows:fmtInt, negative_sum:fmtCurrency}, true);
+  }
+  if (appState.results?.mappings) {
+    renderTable('mappingTable', appState.results.mappings, {}, true);
+  }
+}
+function onGlobalFiltersChanged(){
+  const results = getActiveResults();
+  if (!results) return;
+
+  renderKpisFromResults(results);
+  renderAllTablesFromResults(results);
+
+  updateDashboardCharts('default');
+  renderRankingTabCharts(appState.rankingsMode || 'store');
+  renderMembersTabCharts(appState.membersMode || 'spend');
+  renderSleepingTabCharts(appState.sleepingMode || 'store');
+
+  updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
+}
+
+function getCurrentAnalysisConfig(){
+  return {
+    sleepDays: Number(document.getElementById('sleepDays')?.value || 90),
+    sleepMinOrders: Number(document.getElementById('sleepMinOrders')?.value || 2),
+    sleepMinAmount: Number(document.getElementById('sleepMinAmount')?.value || 1000),
+    aclassMinAmount: Number(document.getElementById('aclassMinAmount')?.value || 3000),
+    aclassMinOrders: Number(document.getElementById('aclassMinOrders')?.value || 5),
+  };
+}
+
+function getDashboardFilteredBaseRows(){
+  if (!appState.results) return [];
+  const original = appState.results.originalCleaned || [];
+  const startValue = document.getElementById('dashboardStartDate')?.value || '';
+  const endValue = document.getElementById('dashboardEndDate')?.value || '';
+  const selectedStores = selectedDashboardStores();
+  const selectedSalespeople = selectedDashboardSalespeople();
+  const startDate = startValue ? new Date(startValue + 'T00:00:00') : null;
+  const endDate = endValue ? new Date(endValue + 'T23:59:59') : null;
+  return original.filter(r => {
+    const okStart = !startDate || !r.date || r.date >= startDate;
+    const okEnd = !endDate || !r.date || r.date <= endDate;
+    const okStore = !selectedStores.length || selectedStores.includes(normalizeText(r.store));
+    const okSalesperson = !selectedSalespeople.length || selectedSalespeople.includes(normalizeText(r.salesperson));
+    return okStart && okEnd && okStore && okSalesperson;
+  });
+}
+
+function getDashboardFilteredResults(){
+  if (!appState.results) return null;
+  const baseRows = getDashboardFilteredBaseRows();
+  const endValue = document.getElementById('dashboardEndDate')?.value || '';
+  const selectedSleepingSalesperson = normalizeText(document.getElementById('filterSalesperson')?.value || '');
+  const endDate = endValue ? new Date(endValue + 'T23:59:59') : null;
+  const filtered = baseRows.filter(r => !selectedSleepingSalesperson || normalizeText(r.salesperson) === selectedSleepingSalesperson);
+  if (!filtered.length) return null;
+  const cfg = getCurrentAnalysisConfig();
+  appState.lastCfg = cfg;
+  return analyze(filtered, { ...cfg, analysisDate: endDate || undefined });
+}
+
+function updateDashboardCharts(mode){
+  if (!appState.results) return;
+  const results = getDashboardFilteredResults() || appState.results.results;
+  renderKpisFromResults(results);
+  destroyCharts();
+
+  const leftTitle = document.querySelector('#dashboard .grid-2 .card:first-child .section-title');
+  const rightTitle = document.querySelector('#dashboard .grid-2 .card:last-child .section-title');
+
+  if (!mode || mode === 'default'){
+    leftTitle.textContent = 'Monthly Sales Trend';
+    rightTitle.textContent = 'Repurchase Structure';
+
+    appState.charts.monthly = new Chart(document.getElementById('monthlyChart'), {
+      type:'line',
+      data:{
+        labels:results.monthly.map(x=>x.year_month),
+        datasets:[
+          {label:'Sales', data:results.monthly.map(x=>x.sales_amount), tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:5, fill:false, clip:false, yAxisID:'y'},
+          {label:'Store Count', data:results.monthly.map(x=>x.store_count), tension:0.35, borderWidth:2, pointRadius:2, pointHoverRadius:4, fill:false, clip:false, yAxisID:'y1'}
+        ]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        interaction:{mode:'index', intersect:false},
+        layout:{padding:{top:28,right:40,bottom:12,left:40}},
+        scales:{
+          x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:0,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+          y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}},
+          y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, border:{display:false}, ticks:{padding:8,color:'#55627a',font:{size:11}, precision:0}}
+        },
+        plugins:{
+          legend:{
+            display:true,
+            labels:{
+              boxWidth:28,
+              padding:16,
+              generateLabels:(chart)=>Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => ({
+                ...item,
+                lineWidth: 0,
+                strokeStyle: 'transparent'
+              }))
+            }
+          },
+          tooltip:{enabled:true, mode:'index', intersect:false},
+          datalabels:{
+            display:(ctx)=>ctx.datasetIndex===0,
+            anchor:'end',
+            align:'end',
+            clamp:true,
+            clip:false,
+            offset:4,
+            formatter:(value)=>shortNumber(value),
+            font:{weight:'600',size:11},color:'#4b5563'
+          }
+        }
+      }
+    });
+
+    setDownloadTarget('dashboard_results.xlsx', [{ name:'Monthly Sales', rows: results.monthly || [] }, { name:'Repurchase Structure', rows: results.repurchaseDistribution || [] }]);
+    clearActiveGlows();
+    appState.charts.repurchase = new Chart(document.getElementById('repurchaseChart'), {
+      type:'bar',
+      data:{ labels:results.repurchaseDistribution.map(x=>x.order_bucket), datasets:[{label:'Members', data:results.repurchaseDistribution.map(x=>x.member_count), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(results.repurchaseDistribution.length).bg, borderColor:getChartPalette(results.repurchaseDistribution.length).border, borderWidth:1}] },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{
+          datalabels:{
+            anchor:'end',
+            align:'end',
+            formatter:(value)=>shortNumber(value),
+            font:{weight:'600',size:11},color:'#4b5563'
+          }
+        }
+      }
+    });
+    return;
+  }
+
+  let rows = [];
+  let labelKey = '';
+  let valueKey = '';
+  let leftChartType = 'bar';
+  let rightChartType = 'doughnut';
+
+  if (mode === 'stores'){
+    leftTitle.textContent = 'Top 10 Stores Performance';
+    rightTitle.textContent = 'Top 10 Stores Share';
+    rows = results.storeRank.slice(0, 10);
+    labelKey = 'store';
+    valueKey = 'performance';
+    setDownloadTarget('top_stores.xlsx', [{ name:'Top Stores', rows: results.storeRank || [] }]);
+    setActiveGlow('#topStoresCard');
+  } else if (mode === 'salespeople'){
+    leftTitle.textContent = 'Top 10 Salespeople Performance';
+    rightTitle.textContent = 'Top 10 Salespeople Share';
+    rows = results.salespersonRank.slice(0, 10);
+    labelKey = 'salesperson';
+    valueKey = 'performance';
+    setDownloadTarget('top_salespeople.xlsx', [{ name:'Top Salespeople', rows: results.salespersonRank || [] }]);
+    setActiveGlow('#topSalespeopleCard');
+  } else if (mode === 'products'){
+    leftTitle.textContent = 'Top 10 Products Sales';
+    rightTitle.textContent = 'Top 10 Product Share';
+    rows = results.productRank.slice(0, 10);
+    labelKey = 'product';
+    valueKey = 'sales_amount';
+    setDownloadTarget('top_products.xlsx', [{ name:'Top Products', rows: results.productRank || [] }]);
+    setActiveGlow('#topProductsCard');
+  }
+
+  appState.charts.monthly = new Chart(document.getElementById('monthlyChart'), {
+    type:leftChartType,
+    data:{ labels:rows.map(x=>x[labelKey]), datasets:[{label:'Amount', data:rows.map(x=>x[valueKey]), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rows.length).bg, borderColor:getChartPalette(rows.length).border, borderWidth:1}] },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        datalabels:{
+          anchor:'end',
+          align:'end',
+          formatter:(value)=>shortNumber(value),
+          font:{weight:'600',size:11},color:'#4b5563'
+        }
+      }
+    }
+  });
+
+  const dashboardPalette = getChartPalette(rows.length);
+  appState.charts.repurchase = new Chart(document.getElementById('repurchaseChart'), {
+    type:rightChartType,
+    data:{ labels:rows.map(x=>x[labelKey]), datasets:[{label:'Amount', data:rows.map(x=>x[valueKey]), borderRadius: rightChartType === 'doughnut' ? 2 : {topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', spacing: rightChartType === 'doughnut' ? 0 : 0, hoverOffset: rightChartType === 'doughnut' ? 0 : undefined, cutout: rightChartType === 'doughnut' ? '52%' : undefined, maxBarThickness:40, clip:0, backgroundColor: rightChartType === 'doughnut' ? dashboardPalette.bg : 'rgba(96, 165, 250, 0.55)', borderColor: rightChartType === 'doughnut' ? dashboardPalette.border : 'rgba(96, 165, 250, 0.9)', borderWidth: rightChartType === 'doughnut' ? 1 : 1}] },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{top:12,right:12,bottom:12,left:12}},
+      plugins:{
+        legend:{
+          display:true,
+          position:'top',
+          align:'start',
+          labels:{
+            boxWidth:48,
+            boxHeight:18,
+            padding:18,
+            color:'#55627a',
+            font:{size:11},
+            generateLabels:(chart)=>{
+              const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+              if (mode !== 'products') return labels;
+              return labels.map(item => ({
+                ...item,
+                text: item.text && item.text.length > 14 ? item.text.slice(0, 14) + '...' : item.text
+              }));
+            }
+          }
+        },
+        tooltip:{
+          callbacks:{
+            title:(items)=>{
+              if (!items.length) return '';
+              const idx = items[0].dataIndex;
+              return rows[idx]?.[labelKey] || '';
+            }
+          }
+        },
+        datalabels:{
+          formatter:(value, ctx)=>{
+            const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+Number(b||0),0);
+            const pct = total ? (value/total*100) : 0;
+            return shortNumber(value) + ' (' + pct.toFixed(1) + '%)';
+          },
+          color:'#4b5563',
+          font:{weight:'600',size:11}
+        }
+      },
+      elements:{
+        arc:{
+          borderJoinStyle:'round'
+        }
+      },
+      animation:false
+    }
+  });
+}
+
+function renderCharts(results){
+  updateDashboardCharts('default');
+}
+function getFilteredSleepList(sourceResults){
+  return sourceResults?.sleepList || appState.results?.results?.sleepList || [];
+}
+function refreshSleepingTable(sourceResults){
+  if (!appState.results) return;
+  const filtered = getFilteredSleepList(sourceResults);
+  renderTable('sleepListTable', filtered, {total_spend:fmtCurrency, order_count:fmtInt, avg_ticket:fmtCurrency, repurchase_times:fmtInt, sleep_days:fmtInt}, true);
+  if (document.querySelector('.tab.active')?.dataset.tab === 'sleeping') {
+    setDownloadTarget('sleeping_member_wake_up_list.xlsx', [{ name:'Sleeping Member Wake-up List', rows: filtered || [] }]);
+  }
+}
+
+function renderRankingOverviewCards(results){
+  renderMiniList('rankingsStoreMini', results.storeRank, 'store', 'performance', fmtCurrency);
+  renderMiniList('rankingsSalespersonMini', results.salespersonRank, 'salesperson', 'performance', fmtCurrency);
+  renderMiniList('rankingsProductMini', results.productRank, 'product', 'sales_amount', fmtCurrency);
+  renderMiniList('rankingsTicketMini', results.ticketRank, 'salesperson', 'avg_ticket', fmtCurrency);
+}
+
+function hideDuplicateRankingCards(){
+  const ids = ['storeRankTable', 'salesRankTable', 'productRankTable', 'ticketRankTable'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const card = el.closest('.card');
+    if (card) card.style.display = 'none';
+  });
+}
+function renderResults(results, mappings){
+  document.getElementById('resultArea').classList.remove('hidden');
+
+  // default dashboard date range from data
+  const datedRows = (appState.results?.originalCleaned || []).filter(r => r.date).sort((a,b)=>(a.date?.getTime?.()||0)-(b.date?.getTime?.()||0));
+  const startInput = document.getElementById('dashboardStartDate');
+  const endInput = document.getElementById('dashboardEndDate');
+  if (startInput && !startInput.value && datedRows.length) startInput.value = ymd(datedRows[0].date);
+  if (endInput && !endInput.value && results.sleepSummary?.[0]?.value) endInput.value = results.sleepSummary[0].value;
+
+  updateDateRangeTriggerText();
+  populateDashboardStoreOptions();
+  populateDashboardSalespersonOptions();
+
+  // validation stays from original full run
+  renderTable('fileCheckTable', results.fileCheck || [], {included_rows:fmtInt, order_count:fmtInt, q_sum:fmtCurrency, negative_rows:fmtInt, negative_sum:fmtCurrency}, true);
+  renderTable('mappingTable', mappings || [], {}, true);
+
+  // render everything from current filters
+  onGlobalFiltersChanged();
+  updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
+
+  setDownloadTarget('dashboard_results.xlsx', [
+    { name:'Monthly Sales', rows: getActiveResults()?.monthly || results.monthly || [] },
+    { name:'Repurchase Structure', rows: getActiveResults()?.repurchaseDistribution || results.repurchaseDistribution || [] }
+  ]);
+
+  hideDuplicateRankingCards();
+  syncResultAreaToControlPanel();
+}
+
+async function downloadWorkbook(filename, sheets){
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Sales Analysis App';
+  wb.created = new Date();
+
+  function columnLetter(n){
+    let s = '';
+    while(n > 0){
+      const m = (n - 1) % 26;
+      s = String.fromCharCode(65 + m) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s;
+  }
+
+  sheets.forEach(sheet => {
+    const rows = sheet.rows || [];
+    const ws = wb.addWorksheet(sheet.name, {
+      views: [{ state: 'frozen', ySplit: 1 }]
+    });
+
+    if (!rows.length){
+      ws.addRow(['No data']);
+      return;
+    }
+
+    const headers = Object.keys(rows[0]);
+    ws.addRow(headers);
+
+    const headerRow = ws.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFD9D9D9' }
+      };
+      cell.font = { bold: true, color: { argb: 'FF000000' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+        bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+      };
+    });
+
+    rows.forEach(row => {
+      ws.addRow(headers.map(h => {
+        const v = row[h];
+        return v instanceof Date ? ymd(v) : v;
+      }));
+    });
+
+    ws.autoFilter = {
+      from: 'A1',
+      to: columnLetter(headers.length) + '1'
+    };
+
+    ws.columns = headers.map(h => {
+      const values = [h, ...rows.map(r => {
+        const v = r[h];
+        return v instanceof Date ? ymd(v) : String(v ?? '');
+      })];
+      const maxLen = Math.min(30, Math.max(12, ...values.map(v => String(v).length)));
+      return { width: maxLen + 2 };
+    });
+  });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function download(filename, text, type){
+  const blob = new Blob([text], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function toCSV(rows){
+  if (!rows || !rows.length) return '';
+  const cols = Object.keys(rows[0]);
+  const esc = v => {
+    if (v instanceof Date) v = ymd(v);
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  return [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n');
+}
+
+function updateControlVisibility(activeTab){
+  const visibleMap = {
+    dashboard: ['dashboardDateRange','dashboardMultiFilters'],
+    rankings: ['dashboardDateRange','dashboardMultiFilters'],
+    members: ['dashboardDateRange','dashboardMultiFilters'],
+    sleeping: ['dashboardDateRange','dashboardMultiFilters','sleepDays','sleepMinOrders','aclassMinAmount','filterSalesperson'],
+    validation: ['dashboardDateRange','dashboardMultiFilters']
+  };
+  const visible = new Set(visibleMap[activeTab] || []);
+  document.querySelectorAll('.control-field').forEach(el => {
+    const shouldShow = visible.has(el.dataset.control);
+    el.classList.toggle('hidden-control', !shouldShow);
+    el.style.display = shouldShow ? '' : 'none';
+  });
+
+  document.querySelectorAll('.filter-menu').forEach(menu => menu.classList.add('hidden'));
+  showOverlayLight(false);
+}
+
+window.addEventListener('load', syncResultAreaToControlPanel);
+window.addEventListener('resize', syncResultAreaToControlPanel);
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.filter-menu').forEach(menu => menu.classList.add('hidden'));
+    showOverlayLight(false);
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.remove('hidden');
+    updateControlVisibility(tab.dataset.tab);
+    if (tab.dataset.tab === 'dashboard') {
+      populateDashboardStoreOptions();
+      populateDashboardSalespersonOptions();
+      populateSleepingSalespersonOptions();
+      updateDateRangeTriggerText();
+      updateDashboardCharts('default');
+    } else if (tab.dataset.tab === 'rankings') {
+      renderRankingTabCharts(appState.rankingsMode || 'store');
+    } else if (tab.dataset.tab === 'members') {
+      renderMembersTabCharts(appState.membersMode || 'spend');
+    } else if (tab.dataset.tab === 'sleeping') {
+      populateSleepingSalespersonOptions();
+      renderSleepingTabCharts(appState.sleepingMode || 'store');
+      refreshSleepingTable(getActiveResults());
+    } else if (tab.dataset.tab === 'validation') {
+      setDownloadTarget('validation.xlsx', [
+        { name:'File Validation', rows: appState.results?.results?.fileCheck || [] },
+        { name:'Resolved Column Mapping', rows: appState.results?.mappings || [] }
+      ]);
+    }
+  });
+});
+
+document.getElementById('dashboardStartDate')?.addEventListener('change', updateDateRangeTriggerText);
+document.getElementById('dashboardEndDate')?.addEventListener('change', updateDateRangeTriggerText);
+document.getElementById('dashboardStoreSearch')?.addEventListener('input', populateDashboardStoreOptions);
+document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
+document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
+document.getElementById('filterSalesperson')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('sleepDays')?.addEventListener('input', onGlobalFiltersChanged);
+document.getElementById('sleepMinOrders')?.addEventListener('input', onGlobalFiltersChanged);
+document.getElementById('aclassMinAmount')?.addEventListener('input', onGlobalFiltersChanged);
+updateControlVisibility('dashboard');
+populateDashboardStoreOptions();
+populateDashboardSalespersonOptions();
+populateSleepingSalespersonOptions();
+
+document.getElementById('topStoresCard')?.addEventListener('click', () => updateDashboardCharts('stores'));
+document.getElementById('topSalespeopleCard')?.addEventListener('click', () => updateDashboardCharts('salespeople'));
+document.getElementById('topProductsCard')?.addEventListener('click', () => updateDashboardCharts('products'));
+document.getElementById('topSalespeopleCard')?.addEventListener('click', () => updateDashboardCharts('salespeople'));
+document.getElementById('topProductsCard')?.addEventListener('click', () => updateDashboardCharts('products'));
+document.querySelector('#topStoresCard .section-title')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  scrollContainerToTop('topStores');
+  updateDashboardCharts('stores');
+});
+document.querySelector('#topSalespeopleCard .section-title')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  scrollContainerToTop('topSalespeople');
+  updateDashboardCharts('salespeople');
+});
+document.querySelector('#topProductsCard .section-title')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  scrollContainerToTop('topProducts');
+  updateDashboardCharts('products');
+});
+document.querySelector('#dashboard .grid-2 .card:first-child')?.addEventListener('dblclick', () => updateDashboardCharts('default'));
+document.querySelector('#dashboard .grid-2 .card:last-child')?.addEventListener('dblclick', () => updateDashboardCharts('default'));
+document.getElementById('rankingsStoreCard')?.addEventListener('click', () => renderRankingTabCharts('store'));
+document.getElementById('rankingsSalespersonCard')?.addEventListener('click', () => renderRankingTabCharts('salesperson'));
+document.getElementById('rankingsProductCard')?.addEventListener('click', () => renderRankingTabCharts('product'));
+document.getElementById('rankingsTicketCard')?.addEventListener('click', () => renderRankingTabCharts('ticket'));
+document.querySelector('#rankingsStoreCard .section-title')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  scrollContainerToTop('rankingsStoreMini');
+  renderRankingTabCharts('store');
+});
+document.querySelector('#rankingsSalespersonCard .section-title')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  scrollContainerToTop('rankingsSalespersonMini');
+  renderRankingTabCharts('salesperson');
+});
+document.querySelector('#rankingsProductCard .section-title')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  scrollContainerToTop('rankingsProductMini');
+  renderRankingTabCharts('product');
+});
+document.querySelector('#rankingsTicketCard .section-title')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  scrollContainerToTop('rankingsTicketMini');
+  renderRankingTabCharts('ticket');
+});
+document.getElementById('memberRankingTitle')?.addEventListener('click', () => {
+  scrollContainerToTop('memberRankTable');
+  renderMembersTabCharts('spend');
+});
+document.getElementById('sleepWakeListTitle')?.addEventListener('click', () => {
+  scrollContainerToTop('sleepListTable');
+  renderSleepingTabCharts('list');
+});
+document.getElementById('sleepWakeListCard')?.addEventListener('click', (e) => {
+  if (e.target.closest('.table-wrap')) return;
+  renderSleepingTabCharts('list');
+});
+document.getElementById('sleepByStoreTitle')?.addEventListener('click', () => {
+  scrollContainerToTop('sleepByStoreTable');
+  renderSleepingTabCharts('store');
+});
+document.getElementById('sleepByStoreCard')?.addEventListener('click', (e) => {
+  if (e.target.closest('.table-wrap')) return;
+  renderSleepingTabCharts('store');
+});
+document.getElementById('storeRankingTitle')?.addEventListener('click', () => {
+  scrollContainerToTop('storeRankTable');
+  renderRankingTabCharts('store');
+});
+document.getElementById('salespersonRankingTitle')?.addEventListener('click', () => {
+  scrollContainerToTop('salesRankTable');
+  renderRankingTabCharts('salesperson');
+});
+document.getElementById('productRankingTitle')?.addEventListener('click', () => {
+  scrollContainerToTop('productRankTable');
+  renderRankingTabCharts('product');
+});
+document.getElementById('ticketRankingTitle')?.addEventListener('click', () => {
+  scrollContainerToTop('ticketRankTable');
+  renderRankingTabCharts('ticket');
+});
+hideDuplicateRankingCards();
+document.getElementById('analyzeBtn').addEventListener('click', async () => {
+  playRunButtonBounce();
+  const files = [...document.getElementById('files').files];
+  const status = document.getElementById('status');
+  if (!files.length){ status.textContent = 'Please upload at least one file.'; return; }
+
+  const overrides = {
+    store: normalizeText(document.getElementById('storeHeader')?.value || ''),
+    salesperson: normalizeText(document.getElementById('salesHeader')?.value || ''),
+    product: normalizeText(document.getElementById('productHeader')?.value || ''),
+    amount: normalizeText(document.getElementById('amountHeader')?.value || ''),
+    date: normalizeText(document.getElementById('dateHeader')?.value || ''),
+    order_no: normalizeText(document.getElementById('orderHeader')?.value || ''),
+    qty:'', member_id:'', member_name:'', phone:''
+  };
+  const cfg = getCurrentAnalysisConfig();
+
+  try{
+    setAnalyzeLoading(true);
+    const prepared = await prepareFiles(files, overrides);
+    if (!prepared.cleaned.length){ status.textContent = 'No valid data rows were found.'; return; }
+    const results = analyze(prepared.cleaned, cfg);
+    appState.lastCfg = cfg;
+    appState.results = { results, mappings: prepared.mappings, originalCleaned: prepared.cleaned };
+    populateSleepingSalespersonOptions();
+    renderResults(results, prepared.mappings);
+    status.innerHTML = '<span class="ok">Done.</span> Loaded ' + prepared.cleaned.length.toLocaleString() + ' valid rows from ' + files.length + ' file(s).';
+  }catch(err){
+    console.error(err);
+    status.innerHTML = '<span class="warn">Error:</span> ' + (err.message || err);
+  }finally{
+    setAnalyzeLoading(false);
+  }
+});
+document.getElementById('filterSalesperson')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('sleepDays')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('sleepMinOrders')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('aclassMinAmount')?.addEventListener('change', onGlobalFiltersChanged);
+
+document.getElementById('dashboardDateTrigger')?.addEventListener('click', () => toggleDropdown('dashboardDateMenu'));
+
+document.getElementById('clearStoreBtn')?.addEventListener('click', () => {
+  document.getElementById('dashboardStoreSearch').value = '';
+  appState.selectedStores.clear();
+  populateDashboardStoreOptions();
+  populateDashboardSalespersonOptions();
+  populateSleepingSalespersonOptions();
+  onGlobalFiltersChanged();
+});
+document.getElementById('clearSalespeopleBtn')?.addEventListener('click', () => {
+  document.getElementById('dashboardSalespersonSearch').value = '';
+  appState.selectedSalespeople.clear();
+  populateDashboardSalespersonOptions();
+  populateSleepingSalespersonOptions();
+  onGlobalFiltersChanged();
+});
+document.getElementById('dashboardStoreTrigger')?.addEventListener('click', () => toggleDropdown('dashboardStoreMenu'));
+document.getElementById('dashboardSalespersonTrigger')?.addEventListener('click', () => toggleDropdown('dashboardSalespersonMenu'));
+document.getElementById('applyDateRangeBtn')?.addEventListener('click', () => {
+  updateDateRangeTriggerText();
+  toggleDropdown('dashboardDateMenu', false);
+  onGlobalFiltersChanged();
+});
+document.addEventListener('click', (e) => {
+  const inDropdown = e.target.closest('.filter-dropdown');
+  if (!inDropdown) {
+    document.querySelectorAll('.filter-menu').forEach(m => m.classList.add('hidden'));
+    showOverlayLight(false);
+  }
+});
+
+document.getElementById('downloadSleepXlsxBtn').addEventListener('click', () => {
+  const btn = document.getElementById('downloadSleepXlsxBtn');
+  btn?.classList.add('clicked-edge');
+  setTimeout(() => btn?.classList.remove('clicked-edge'), 1400);
+  useDownloadTarget();
+});
+</script>
+</body>
+</html>
