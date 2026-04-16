@@ -23,23 +23,131 @@
     .grid-2{grid-template-columns:1.2fr .8fr}
     .grid-3{grid-template-columns:repeat(3,1fr)}
     .grid-4{grid-template-columns:repeat(4,1fr)}
-    .control-panel{padding:24px}
-    .control-top{display:grid;grid-template-columns:minmax(320px,1.05fr) minmax(520px,1.95fr);gap:28px;align-items:start}
-    .control-left{display:flex;flex-direction:column;gap:18px;justify-content:flex-start}
-    .upload-box{display:flex;flex-direction:column;gap:10px}
-    .field-grid{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:14px 18px;align-items:start}
-    .button-group{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-    .btn{min-height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
-    .status-row{display:flex;align-items:center;justify-content:flex-start}
-    #status{font-size:12px;color:#6b7280}
-    @media (max-width: 1100px){
-      .control-top{grid-template-columns:1fr;gap:20px}
-      .field-grid{grid-template-columns:repeat(2,minmax(140px,1fr))}
-    }
-    @media (max-width: 700px){
-      .field-grid{grid-template-columns:1fr}
-      .button-group{gap:12px}
-    }
+    .control-panel{padding:22px 20px}
+.control-top{
+  display:grid;
+  grid-template-columns:minmax(300px,1fr) minmax(520px,1.75fr);
+  gap:28px;
+  align-items:start
+}
+.control-left{
+  display:grid;
+  grid-template-rows:auto auto auto;
+  gap:14px;
+  align-content:start
+}
+.upload-box{display:grid;gap:10px;align-content:start}
+.field-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(150px,1fr));
+  gap:14px 16px;
+  align-items:start
+}
+.control-field.hidden-control,.field-grid > .control-field.hidden-control,.multi-grid.control-field.hidden-control{display:none !important}
+.button-group{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.status-row{display:flex;align-items:center;justify-content:flex-start;min-height:24px}
+#status{font-size:12px;color:#6b7280}
+input[type="date"], select.control-select{
+  border:1px solid #7690f3;border-radius:12px;padding:10px 12px;background:#ffffff;color:var(--text);min-width:120px;box-shadow:0 0 12px rgba(105,105,159,.18);height:44px
+}
+.store-multi{display:flex;flex-direction:column;gap:8px;min-width:0}
+.store-search-input{
+  width:100%;
+  min-height:44px;
+  border:1px solid #7690f3;
+  border-radius:12px;
+  padding:10px 12px;
+  background:#ffffff;
+  color:var(--text);
+  box-shadow:0 0 12px rgba(105,105,159,.18)
+}
+.store-options{
+  max-height:132px;
+  overflow:auto;
+  border:1px solid #7690f3;
+  border-radius:12px;
+  padding:8px 10px;
+  background:#fff;
+  box-shadow:0 0 12px rgba(105,105,159,.12)
+}
+.store-option{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:14px;color:#111827}
+.store-option input{margin:0}
+.store-selected{font-size:12px;color:#6b7280;min-height:16px}
+.multi-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px 18px;
+  grid-column:1 / -1;
+  align-items:start;
+}
+.filter-dropdown{position:relative}
+.filter-trigger{
+  width:100%;
+  min-height:44px;
+  border:1px solid #7690f3;
+  border-radius:12px;
+  padding:10px 12px;
+  background:#ffffff;
+  color:var(--text);
+  box-shadow:0 0 12px rgba(105,105,159,.18);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  cursor:pointer;
+}
+.filter-caret{color:#667085;font-size:12px}
+.filter-menu{
+  position:absolute;
+  top:calc(100% + 8px);
+  left:0;
+  width:100%;
+  min-width:300px;
+  z-index:80;
+  background:rgba(255,255,255,.995);
+  border:1px solid #cfd6fb;
+  border-radius:14px;
+  padding:12px;
+  box-shadow:0 24px 56px rgba(17,24,39,.24), 0 0 0 1px rgba(254,112,246,.18), 0 0 34px rgba(254,112,246,.35);
+  backdrop-filter:blur(4px);
+}
+.range-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.range-apply{display:flex;justify-content:flex-end;margin-top:10px}
+.range-trigger-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu-label{font-size:12px;color:#55627a;margin-bottom:4px}
+.overlay-light{
+  position:fixed;inset:0;background:rgba(254,112,246,.12);backdrop-filter:blur(3px);z-index:70;
+}
+
+.store-options{
+  max-height:220px;
+  min-height:132px;
+  overflow:auto;
+  border:1px solid #f4b8ef;
+  border-radius:12px;
+  padding:8px 10px;
+  background:#fff;
+  box-shadow:inset 0 0 0 1px rgba(254,112,246,.10);
+}
+.store-option{display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:14px;color:#111827}
+.dropdown-actions{display:flex;justify-content:flex-end;margin:8px 0 6px}
+.clear-filter-btn{min-height:32px;padding:6px 12px;border:1px solid #fe70f6;background:#fff;color:#fe70f6;border-radius:10px;box-shadow:none}
+.clear-filter-btn:hover{background:#fff2fd}
+.active-glow{
+  box-shadow:0 0 0 2px #fe70f6, 0 0 24px rgba(254,112,246,.22) !important;
+}
+@media (max-width: 900px){
+  .multi-grid{grid-template-columns:1fr}
+}
+@media (max-width: 1180px){
+  .control-top{grid-template-columns:1fr;gap:20px}
+  .field-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}
+}
+@media (max-width: 700px){
+  .field-grid{grid-template-columns:1fr}
+  .button-group{gap:12px}
+}
 
     .sleep-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
     .sleep-card{min-width:0;width:100%;height:340px}
@@ -74,6 +182,8 @@
     button{border:1px solid #007a31;background:linear-gradient(180deg, #00963d, #007a31);color:#fff;padding:11px 16px;border-radius:12px;cursor:pointer;font-weight:600;box-shadow:0 0 18px rgba(105,105,159,.34)}
     button.secondary{background:linear-gradient(180deg, rgba(18,28,67,.98), rgba(10,18,48,.98));box-shadow:0 0 18px rgba(96,98,146,.25)}
     button.light{background:linear-gradient(180deg, rgba(31,49,112,.95), rgba(20,33,79,.95));color:#dfe6ff;box-shadow:0 0 18px rgba(96,98,146,.25)}
+#downloadSleepXlsxBtn{border:1px solid transparent;transition:border-color .18s ease, box-shadow .18s ease}
+#downloadSleepXlsxBtn.clicked-edge{border-color:#007a31;box-shadow:0 0 0 2px rgba(0,122,49,.20),0 0 18px rgba(0,122,49,.35)}
     .small{font-size:12px;color:#8fa0d2}
     .section-title{margin:4px 0 12px;font-size:18px;font-weight:700}
     .table-wrap{overflow:auto;max-height:480px;border:1px solid var(--line);border-radius:14px}
@@ -86,6 +196,7 @@
     .tab{padding:10px 14px;border-radius:999px;background:#ffffff;color:var(--text);cursor:pointer;font-weight:600;border:1px solid #7690f3;box-shadow:0 0 12px rgba(105,105,159,.22)}
     .tab.active{background:#5988f3;color:#ffffff;border-color:#5988f3;box-shadow:0 0 18px rgba(89,136,243,.28)}
     .hidden{display:none}
+    #resultArea{width:100%;margin:0 auto}
     .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#eef3ff;color:#2342ad;font-size:12px;font-weight:700;box-shadow:0 0 8px rgba(118,144,243,.16)}
     .ok{color:var(--good)}
     .warn{color:var(--warn)}
@@ -114,7 +225,7 @@
     <div class="control-top">
       <div class="control-left">
         <div class="upload-box">
-          <label>Upload Excel files (.xls / .xlsx)</label>
+          <label for="files">Upload Excel files (.xls / .xlsx)</label>
           <input id="files" type="file" accept=".xls,.xlsx" multiple />
           <div class="small">Upload one or more files, then run analysis in your browser.</div>
         </div>
@@ -129,38 +240,92 @@
         </div>
       </div>
 
-      <div>
-        <div class="field-grid">
-          <div class="col">
-            <label>Sleeping days</label>
+      
+<div class="field-grid">
+          
+<div class="col control-field" data-control="dashboardDateRange" style="grid-column: span 2;">
+  <label>Evaluation time</label>
+  <div class="filter-dropdown" id="dashboardDateDropdown">
+    <button type="button" class="filter-trigger" id="dashboardDateTrigger">
+      <span class="range-trigger-text" id="dashboardDateTriggerText">Select date range</span>
+      <span class="filter-caret">▾</span>
+    </button>
+    <div class="filter-menu hidden" id="dashboardDateMenu">
+      <div class="range-grid">
+        <div>
+          <div class="menu-label">Start date</div>
+          <input id="dashboardStartDate" type="date" />
+        </div>
+        <div>
+          <div class="menu-label">End date</div>
+          <input id="dashboardEndDate" type="date" />
+        </div>
+      </div>
+      <div class="range-apply">
+        <button type="button" class="light btn" id="applyDateRangeBtn" style="min-height:38px;padding:8px 12px">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+          <div class="multi-grid control-field" data-control="dashboardMultiFilters">
+            <div class="col">
+              <label>Store</label>
+              <div class="filter-dropdown" id="dashboardStoreDropdown">
+                <button type="button" class="filter-trigger" id="dashboardStoreTrigger">
+                  <span id="dashboardStoreTriggerText">All stores</span>
+                  <span class="filter-caret">▾</span>
+                </button>
+                <div class="filter-menu hidden" id="dashboardStoreMenu">
+                  <input id="dashboardStoreSearch" class="store-search-input" type="text" placeholder="Search store" />
+                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearStoreBtn">Clear</button></div>
+                  <div id="dashboardStoreOptions" class="store-options"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <label>Salespeople</label>
+              <div class="filter-dropdown" id="dashboardSalespersonDropdown">
+                <button type="button" class="filter-trigger" id="dashboardSalespersonTrigger">
+                  <span id="dashboardSalespersonTriggerText">All salespeople</span>
+                  <span class="filter-caret">▾</span>
+                </button>
+                <div class="filter-menu hidden" id="dashboardSalespersonMenu">
+                  <input id="dashboardSalespersonSearch" class="store-search-input" type="text" placeholder="Search salesperson" />
+                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearSalespeopleBtn">Clear</button></div>
+                  <div id="dashboardSalespersonOptions" class="store-options"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col control-field" data-control="sleepDays">
+            <label for="sleepDays">Sleeping days</label>
             <input id="sleepDays" type="number" value="90" min="1" />
           </div>
-          <div class="col">
-            <label>Min member orders</label>
+          <div class="col control-field" data-control="sleepMinOrders">
+            <label for="sleepMinOrders">Min member orders</label>
             <input id="sleepMinOrders" type="number" value="2" min="1" />
           </div>
-          <div class="col">
-            <label>Min member spend</label>
+          <div class="col control-field" data-control="sleepMinAmount">
+            <label for="sleepMinAmount">Min member spend</label>
             <input id="sleepMinAmount" type="number" value="1000" min="0" step="100" />
           </div>
-          <div class="col">
-            <label>A-class min spend</label>
+          <div class="col control-field" data-control="aclassMinAmount">
+            <label for="aclassMinAmount">A-class min spend</label>
             <input id="aclassMinAmount" type="number" value="3000" min="0" step="100" />
           </div>
-          <div class="col">
-            <label>Filter by salesperson</label>
+          <div class="col control-field" data-control="filterSalesperson">
+            <label for="filterSalesperson">Filter by salesperson</label>
             <input id="filterSalesperson" type="text" placeholder="" />
           </div>
-          <div class="col">
-            <label>Filter by store</label>
+          <div class="col control-field" data-control="filterStore">
+            <label for="filterStore">Filter by store</label>
             <input id="filterStore" type="text" placeholder="" />
           </div>
         </div>
       </div>
     </div>
   </div>
-
-
 
   <div id="resultArea" class="hidden">
     <div class="grid grid-4" style="margin-top:16px">
@@ -249,19 +414,19 @@
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="storeRankingCard" style="margin-top:16px">
         <div class="section-title" id="storeRankingTitle" style="cursor:pointer">Store Performance Ranking</div><div class="small">Click section titles below to change the two charts above.</div>
         <div class="table-wrap" id="storeRankTable"></div>
       </div>
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="salespersonRankingCard" style="margin-top:16px">
         <div class="section-title" id="salespersonRankingTitle" style="cursor:pointer">Salesperson Performance Ranking</div>
         <div class="table-wrap" id="salesRankTable"></div>
       </div>
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="productRankingCard" style="margin-top:16px">
         <div class="section-title" id="productRankingTitle" style="cursor:pointer">Product Ranking</div>
         <div class="table-wrap" id="productRankTable"></div>
       </div>
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="ticketRankingCard" style="margin-top:16px">
         <div class="section-title" id="ticketRankingTitle" style="cursor:pointer">Average Ticket Ranking</div>
         <div class="table-wrap" id="ticketRankTable"></div>
       </div>
@@ -278,7 +443,7 @@
           <canvas id="membersBarChart"></canvas>
         </div>
       </div>
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="memberRankingCard" style="margin-top:16px">
         <div class="section-title" id="memberRankingTitle" style="cursor:pointer">Member Spend Ranking</div><div class="small">Click this title to refresh the two charts above from member ranking.</div>
         <div class="table-wrap" id="memberRankTable"></div>
       </div>
@@ -307,7 +472,7 @@
           <div class="table-wrap" id="sleepByStoreTable"></div>
         </div>
       </div>
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="sleepSummaryCard" style="margin-top:16px">
         <div class="section-title" id="sleepSummaryTitle" style="cursor:pointer">Sleeping Member Summary</div>
         <div id="sleepSummary"></div>
       </div>
@@ -341,7 +506,36 @@ const HEADER_CANDIDATES = {
 };
 
 Chart.register(ChartDataLabels);
+
+const hoverGuidePlugin = {
+  id: 'hoverGuidePlugin',
+  afterDatasetsDraw(chart) {
+    const active = chart.tooltip && chart.tooltip.getActiveElements ? chart.tooltip.getActiveElements() : [];
+    if (!active || !active.length) return;
+    const {ctx, chartArea:{top,bottom}} = chart;
+    const x = active[0].element.x;
+    ctx.save();
+    ctx.setLineDash([6,6]);
+    ctx.strokeStyle = 'rgba(75, 85, 99, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+Chart.register(hoverGuidePlugin);
+
 let appState = { results: null, charts: {} };
+
+function syncResultAreaToControlPanel(){
+  const controlPanel = document.querySelector('.control-panel');
+  const resultArea = document.getElementById('resultArea');
+  if (!controlPanel || !resultArea) return;
+  resultArea.style.maxWidth = controlPanel.offsetWidth + 'px';
+  resultArea.style.margin = '0 auto';
+}
 
 function colLetterToIndex(col){
   col = String(col || '').trim().toUpperCase();
@@ -413,6 +607,16 @@ function shortNumber(n){
 }
 function ymd(date){
   if (!date) return '';
+  if (typeof date === 'string') {
+    const d = new Date(date);
+    if (!isNaN(d)) date = d;
+    else return String(date);
+  }
+  if (!(date instanceof Date)) {
+    const d = new Date(date);
+    if (!isNaN(d)) date = d;
+    else return '';
+  }
   return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
 }
 function ym(date){
@@ -511,7 +715,8 @@ function analyze(cleaned, cfg){
       };
     }).sort((a,b)=>b.total_spend-a.total_spend);
 
-  const analysisDate = cleaned.filter(x=>x.date).sort((a,b)=>b.date-a.date)[0]?.date || new Date();
+  const latestDataDate = cleaned.filter(x=>x.date).sort((a,b)=>b.date-a.date)[0]?.date || new Date();
+  const analysisDate = cfg.analysisDate || latestDataDate;
   const detailByMember = groupBy(cleaned.filter(r=>r.is_member_order), r => r.member_key + '|||' + r.member_name);
   const favProductMap = new Map(), recentMap = new Map();
 
@@ -541,7 +746,7 @@ function analyze(cleaned, cfg){
     .sort((a,b)=>(a.priority.localeCompare(b.priority))||(b.total_spend-a.total_spend)||(b.sleep_days-a.sleep_days));
 
   const monthly = [...groupBy(cleaned.filter(r=>r.year_month), r => r.year_month).entries()]
-    .map(([year_month, items]) => ({year_month, sales_amount:sum(items,'amount')}))
+    .map(([year_month, items]) => ({year_month, sales_amount:sum(items,'amount'), store_count:new Set(items.map(x=>x.store).filter(Boolean)).size}))
     .sort((a,b)=>a.year_month.localeCompare(b.year_month));
 
   const bucketCounter = {};
@@ -656,9 +861,181 @@ function getChartPalette(n){
   };
 }
 
+
+function setDownloadTarget(filename, sheets){
+  appState.downloadTarget = { filename, sheets };
+}
+function useDownloadTarget(){
+  if (!appState.results || !appState.downloadTarget) return;
+  downloadWorkbook(appState.downloadTarget.filename, appState.downloadTarget.sheets);
+}
+
+function selectedDashboardSalespeople(){
+  return [...document.querySelectorAll('#dashboardSalespersonOptions input[type="checkbox"]:checked')]
+    .filter(x => x.id !== 'dashboardSalespeopleAllOption')
+    .map(x => normalizeText(x.value))
+    .filter(Boolean);
+}
+function updateDashboardSalespersonSelectedText(){
+  const el = document.getElementById('dashboardSalespersonTriggerText');
+  if (!el) return;
+  const selected = selectedDashboardSalespeople();
+  if (!selected.length) { el.textContent = 'All salespeople'; return; }
+  el.textContent = selected.length <= 2 ? selected.join(', ') : selected.length + ' salespeople';
+}
+function populateDashboardSalespersonOptions(){
+  const wrap = document.getElementById('dashboardSalespersonOptions');
+  if (!wrap || !appState.results?.originalCleaned) return;
+  const search = (document.getElementById('dashboardSalespersonSearch')?.value || '').trim().toLowerCase();
+  const prev = new Set(selectedDashboardSalespeople());
+  const selectedStores = selectedDashboardStores();
+  const sourceRows = (appState.results.originalCleaned || []).filter(r => !selectedStores.length || selectedStores.includes(normalizeText(r.store)));
+  const names = [...new Set(sourceRows.map(r => normalizeText(r.salesperson)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const allowed = new Set(names);
+  const filtered = names.filter(s => !search || s.toLowerCase().includes(search));
+  const optionsHtml = filtered.map(name => {
+    const checked = prev.has(name) && allowed.has(name);
+    return '<label class="store-option"><input type="checkbox" value="' + name.replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '> <span>' + name + '</span></label>';
+  }).join('');
+  wrap.innerHTML = '<label class="store-option"><input type="checkbox" id="dashboardSalespeopleAllOption"> <span>All salespeople</span></label>' + (optionsHtml || '<div class="small">No matching salespeople</div>');
+  const allOpt = document.getElementById('dashboardSalespeopleAllOption');
+  if (allOpt) {
+    allOpt.checked = prev.size === 0;
+    allOpt.addEventListener('change', () => {
+      if (allOpt.checked) {
+        wrap.querySelectorAll('input[type="checkbox"]').forEach(x => { if (x !== allOpt) x.checked = false; });
+        updateDashboardSalespersonSelectedText();
+        onGlobalFiltersChanged();
+      }
+    });
+  }
+  wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (cb === allOpt) return;
+    cb.addEventListener('change', () => {
+      if (allOpt) allOpt.checked = false;
+      updateDashboardSalespersonSelectedText();
+      onGlobalFiltersChanged();
+    });
+  });
+  updateDashboardSalespersonSelectedText();
+}
+
+function selectedDashboardStores(){
+  return [...document.querySelectorAll('#dashboardStoreOptions input[type="checkbox"]:checked')]
+    .filter(x => x.id !== 'dashboardStoreAllOption')
+    .map(x => normalizeText(x.value))
+    .filter(Boolean);
+}
+function updateDashboardStoreSelectedText(){
+  const el = document.getElementById('dashboardStoreTriggerText');
+  if (!el) return;
+  const selected = selectedDashboardStores();
+  if (!selected.length) { el.textContent = 'All stores'; return; }
+  el.textContent = selected.length <= 2 ? selected.join(', ') : selected.length + ' stores';
+}
+function populateDashboardStoreOptions(){
+  const wrap = document.getElementById('dashboardStoreOptions');
+  if (!wrap || !appState.results?.originalCleaned) return;
+  const search = (document.getElementById('dashboardStoreSearch')?.value || '').trim().toLowerCase();
+  const prev = new Set(selectedDashboardStores());
+  const stores = [...new Set((appState.results.originalCleaned || []).map(r => normalizeText(r.store)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const filtered = stores.filter(s => !search || s.toLowerCase().includes(search));
+  const optionsHtml = filtered.map(store => {
+    const checked = prev.size ? prev.has(store) : false;
+    return '<label class="store-option"><input type="checkbox" value="' + store.replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '> <span>' + store + '</span></label>';
+  }).join('');
+  wrap.innerHTML = '<label class="store-option"><input type="checkbox" id="dashboardStoreAllOption"> <span>All stores</span></label>' + (optionsHtml || '<div class="small">No matching stores</div>');
+  const allOpt = document.getElementById('dashboardStoreAllOption');
+  if (allOpt) {
+    allOpt.checked = prev.size === 0;
+    allOpt.addEventListener('change', () => {
+      if (allOpt.checked) {
+        wrap.querySelectorAll('input[type="checkbox"]').forEach(x => { if (x !== allOpt) x.checked = false; });
+        updateDashboardStoreSelectedText();
+        populateDashboardSalespersonOptions();
+        onGlobalFiltersChanged();
+      }
+    });
+  }
+  wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (cb === allOpt) return;
+    cb.addEventListener('change', () => {
+      if (allOpt) allOpt.checked = false;
+      updateDashboardStoreSelectedText();
+      populateDashboardSalespersonOptions();
+      onGlobalFiltersChanged();
+    });
+  });
+  updateDashboardStoreSelectedText();
+}
+
+
+
+function updateDateRangeTriggerText(){
+  const el = document.getElementById('dashboardDateTriggerText');
+  const s = document.getElementById('dashboardStartDate')?.value || '';
+  const e = document.getElementById('dashboardEndDate')?.value || '';
+  if (!el) return;
+  if (s && e) el.textContent = `${s} ~ ${e}`;
+  else if (s) el.textContent = `${s} ~`;
+  else if (e) el.textContent = `~ ${e}`;
+  else el.textContent = 'Select date range';
+}
+function showOverlayLight(show){
+  let ov = document.getElementById('overlayLight');
+  if (show){
+    if (!ov){
+      ov = document.createElement('div');
+      ov.id = 'overlayLight';
+      ov.className = 'overlay-light';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', () => {
+        document.querySelectorAll('.filter-menu').forEach(m => m.classList.add('hidden'));
+        showOverlayLight(false);
+      });
+    }
+  } else if (ov){
+    ov.remove();
+  }
+}
+function renderKpisFromResults(results){
+  if (!results?.kpis) return;
+  document.getElementById('kpiSales').textContent = fmtCurrency(results.kpis.totalSales);
+  document.getElementById('kpiOrders').textContent = fmtInt(results.kpis.totalOrders);
+  document.getElementById('kpiReg').textContent = fmtPct(results.kpis.memberRegistrationRate);
+  document.getElementById('kpiRep').textContent = fmtPct(results.kpis.repurchaseRate);
+  document.getElementById('kpiRepTimes').textContent = Number(results.kpis.averageRepurchaseTimes || 0).toFixed(2);
+  document.getElementById('kpiSleep').textContent = fmtInt(results.kpis.sleepingMembers);
+  document.getElementById('kpiASleep').textContent = fmtInt(results.kpis.aClassSleepingMembers);
+  document.getElementById('kpiFiles').textContent = fmtInt(results.kpis.filesLoaded);
+}
+
+function toggleDropdown(menuId, forceOpen){
+  const menu = document.getElementById(menuId);
+  if (!menu) return;
+  const willOpen = forceOpen == null ? menu.classList.contains('hidden') : forceOpen;
+  document.querySelectorAll('.filter-menu').forEach(m => m.classList.add('hidden'));
+  if (willOpen) {
+    menu.classList.remove('hidden');
+    showOverlayLight(true);
+  } else {
+    showOverlayLight(false);
+  }
+}
+function clearActiveGlows(){
+  document.querySelectorAll('.active-glow').forEach(el => el.classList.remove('active-glow'));
+}
+function setActiveGlow(selector){
+  clearActiveGlows();
+  let el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+  if (el && el.classList.contains('section-title')) el = el.closest('.card');
+  if (el) el.classList.add('active-glow');
+}
+
 function renderRankingTabCharts(mode){
   if (!appState.results) return;
-  const results = appState.results.results;
+  const results = getActiveResults();
+  appState.rankingsMode = mode || 'store';
   const commonLabelOpts = {
     responsive:true,
     maintainAspectRatio:false,
@@ -691,24 +1068,32 @@ function renderRankingTabCharts(mode){
   let title2 = 'Ranking Comparison';
 
   if (!mode || mode === 'store'){
+    setDownloadTarget('store_ranking.xlsx', [{ name:'Store Ranking', rows: results.storeRank || [] }]);
+    setActiveGlow('#rankingsStoreCard');
     rows = results.storeRank.slice(0, 10);
     labels = rows.map(x => x.store);
     values = rows.map(x => x.performance);
     title1 = 'Store Performance Trend';
     title2 = 'Store Performance Comparison';
   } else if (mode === 'salesperson'){
+    setDownloadTarget('salesperson_ranking.xlsx', [{ name:'Salesperson Ranking', rows: results.salespersonRank || [] }]);
+    setActiveGlow('#rankingsSalespersonCard');
     rows = results.salespersonRank.slice(0, 10);
     labels = rows.map(x => x.salesperson);
     values = rows.map(x => x.performance);
     title1 = 'Salesperson Performance Trend';
     title2 = 'Salesperson Performance Comparison';
   } else if (mode === 'product'){
+    setDownloadTarget('product_ranking.xlsx', [{ name:'Product Ranking', rows: results.productRank || [] }]);
+    setActiveGlow('#rankingsProductCard');
     rows = results.productRank.slice(0, 10);
     labels = rows.map(x => x.product);
     values = rows.map(x => x.sales_amount);
     title1 = 'Product Sales Trend';
     title2 = 'Product Sales Comparison';
   } else if (mode === 'ticket'){
+    setDownloadTarget('average_ticket_ranking.xlsx', [{ name:'Average Ticket Ranking', rows: results.ticketRank || [] }]);
+    setActiveGlow('#rankingsTicketCard');
     rows = results.ticketRank.slice(0, 10);
     labels = rows.map(x => x.salesperson);
     values = rows.map(x => x.avg_ticket);
@@ -742,7 +1127,8 @@ function renderRankingTabCharts(mode){
 
 function renderMembersTabCharts(mode){
   if (!appState.results) return;
-  const results = appState.results.results;
+  const results = getActiveResults();
+  appState.membersMode = mode || 'spend';
   const commonLabelOpts = {
     responsive:true,
     maintainAspectRatio:false,
@@ -774,6 +1160,8 @@ function renderMembersTabCharts(mode){
   const ticketVals = rows.map(x => x.avg_ticket);
   const repurchaseVals = rows.map(x => x.repurchase_times);
 
+  setDownloadTarget('member_spend_ranking.xlsx', [{ name:'Member Spend Ranking', rows: results.memberRank || [] }]);
+  setActiveGlow('#memberRankingCard');
   let leftTitle = 'Member Spend Trend';
   let rightTitle = 'Top Member Spend';
   let leftData = spendVals;
@@ -820,7 +1208,8 @@ function renderMembersTabCharts(mode){
 
 function renderSleepingTabCharts(mode){
   if (!appState.results) return;
-  const results = appState.results.results;
+  const results = getActiveResults();
+  appState.sleepingMode = mode || 'store';
   const commonLabelOpts = {
     responsive:true,
     maintainAspectRatio:false,
@@ -855,6 +1244,8 @@ function renderSleepingTabCharts(mode){
   let rightTitle = '';
 
   if (!mode || mode === 'store'){
+    setDownloadTarget('sleeping_members_by_store.xlsx', [{ name:'Sleeping Members by Store', rows: results.sleepByStore || [] }]);
+    setActiveGlow('#sleepByStoreCard');
     const rows = results.sleepByStore.slice(0,10);
     labels = rows.map(x=>x.last_store);
     leftData = rows.map(x=>x.sleeping_members);
@@ -864,7 +1255,9 @@ function renderSleepingTabCharts(mode){
     leftTitle = 'Sleeping Members by Store';
     rightTitle = 'Sleeping Members Historical Spend';
   } else if (mode === 'list'){
-    const rows = results.sleepList.slice(0,10);
+    setDownloadTarget('sleeping_member_wake_up_list.xlsx', [{ name:'Sleeping Member Wake-up List', rows: getFilteredSleepList() || results.sleepList || [] }]);
+    setActiveGlow('#sleepWakeListCard');
+    const rows = (getFilteredSleepList(results) || []).slice(0,10);
     labels = rows.map(x=>x.member_name || x.member_key);
     leftData = rows.map(x=>x.total_spend);
     rightData = rows.map(x=>x.sleep_days);
@@ -873,6 +1266,8 @@ function renderSleepingTabCharts(mode){
     leftTitle = 'Sleeping Member Wake-up List';
     rightTitle = 'Sleeping Member Sleep Days';
   } else if (mode === 'summary'){
+    setDownloadTarget('sleeping_member_summary.xlsx', [{ name:'Sleeping Member Summary', rows: results.sleepSummary || [] }]);
+    setActiveGlow('#sleepSummaryCard');
     const rows = (results.sleepSummary || []).filter(x => typeof x.value === 'number').slice(0,6);
     labels = rows.map(x=>x.metric);
     leftData = rows.map(x=>Number(x.value||0));
@@ -930,9 +1325,78 @@ function renderExtraTabCharts(results){
   renderSleepingTabCharts('store');
 }
 
+
+function getActiveResults(){
+  return getDashboardFilteredResults() || (appState.results ? appState.results.results : null);
+}
+function renderAllTablesFromResults(results){
+  if (!results) return;
+
+  renderMiniList('topStores', (results.storeRank || []).slice(0,10), 'store', 'performance', fmtCurrency);
+  renderMiniList('topSalespeople', (results.salespersonRank || []).slice(0,10), 'salesperson', 'performance', fmtCurrency);
+  renderMiniList('topProducts', (results.productRank || []).slice(0,10), 'product', 'sales_amount', fmtCurrency);
+
+  renderMiniList('rankingsStoreMini', (results.storeRank || []).slice(0,10), 'store', 'performance', fmtCurrency);
+  renderMiniList('rankingsSalespersonMini', (results.salespersonRank || []).slice(0,10), 'salesperson', 'performance', fmtCurrency);
+  renderMiniList('rankingsProductMini', (results.productRank || []).slice(0,10), 'product', 'sales_amount', fmtCurrency);
+  renderMiniList('rankingsTicketMini', (results.ticketRank || []).slice(0,10), 'salesperson', 'avg_ticket', fmtCurrency);
+
+  renderTable('storeRankTable', results.storeRank || [], {performance:fmtCurrency}, true);
+  renderTable('salesRankTable', results.salespersonRank || [], {performance:fmtCurrency}, true);
+  renderTable('productRankTable', results.productRank || [], {sales_amount:fmtCurrency, sales_qty:fmtInt, sales_orders:fmtInt}, true);
+  renderTable('ticketRankTable', results.ticketRank || [], {total_sales:fmtCurrency, order_count:fmtInt, avg_ticket:fmtCurrency}, true);
+  renderTable('memberRankTable', results.memberRank || [], {total_spend:fmtCurrency, order_count:fmtInt, last_purchase_date:v=>v?ymd(v):'', avg_ticket:fmtCurrency, repurchase_times:fmtInt}, true);
+  refreshSleepingTable(results);
+  renderTable('sleepByStoreTable', results.sleepByStore || [], {sleeping_members:fmtInt, historical_spend:fmtCurrency}, true);
+  renderTable('sleepSummary', results.sleepSummary || [], {value:v => typeof v === 'number' ? (String(v).includes('.') ? fmtCurrency(v) : fmtInt(v)) : v}, true);
+
+  if (appState.results?.results?.fileCheck) {
+    renderTable('fileCheckTable', appState.results.results.fileCheck, {included_rows:fmtInt, order_count:fmtInt, q_sum:fmtCurrency, negative_rows:fmtInt, negative_sum:fmtCurrency}, true);
+  }
+  if (appState.results?.mappings) {
+    renderTable('mappingTable', appState.results.mappings, {}, true);
+  }
+}
+function onGlobalFiltersChanged(){
+  const results = getActiveResults();
+  if (!results) return;
+
+  renderKpisFromResults(results);
+  renderAllTablesFromResults(results);
+
+  updateDashboardCharts('default');
+  renderRankingTabCharts(appState.rankingsMode || 'store');
+  renderMembersTabCharts(appState.membersMode || 'spend');
+  renderSleepingTabCharts(appState.sleepingMode || 'store');
+
+  updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
+}
+
+function getDashboardFilteredResults(){
+  if (!appState.results) return null;
+  const original = appState.results.originalCleaned || [];
+  const startValue = document.getElementById('dashboardStartDate')?.value || '';
+  const endValue = document.getElementById('dashboardEndDate')?.value || '';
+  const selectedStores = selectedDashboardStores();
+  const selectedSalespeople = selectedDashboardSalespeople();
+  const startDate = startValue ? new Date(startValue + 'T00:00:00') : null;
+  const endDate = endValue ? new Date(endValue + 'T23:59:59') : null;
+  const filtered = original.filter(r => {
+    const okStart = !startDate || !r.date || r.date >= startDate;
+    const okEnd = !endDate || !r.date || r.date <= endDate;
+    const okStore = !selectedStores.length || selectedStores.includes(normalizeText(r.store));
+    const okSalesperson = !selectedSalespeople.length || selectedSalespeople.includes(normalizeText(r.salesperson));
+    return okStart && okEnd && okStore && okSalesperson;
+  });
+  if (!filtered.length) return null;
+  const cfg = appState.lastCfg || {sleepDays:90,sleepMinOrders:2,sleepMinAmount:1000,aclassMinAmount:3000,aclassMinOrders:5};
+  return analyze(filtered, { ...cfg, analysisDate: endDate || undefined });
+}
+
 function updateDashboardCharts(mode){
   if (!appState.results) return;
-  const results = appState.results.results;
+  const results = getDashboardFilteredResults() || appState.results.results;
+  renderKpisFromResults(results);
   destroyCharts();
 
   const leftTitle = document.querySelector('#dashboard .grid-2 .card:first-child .section-title');
@@ -944,20 +1408,30 @@ function updateDashboardCharts(mode){
 
     appState.charts.monthly = new Chart(document.getElementById('monthlyChart'), {
       type:'line',
-      data:{ labels:results.monthly.map(x=>x.year_month), datasets:[{label:'Sales', data:results.monthly.map(x=>x.sales_amount), tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}] },
+      data:{
+        labels:results.monthly.map(x=>x.year_month),
+        datasets:[
+          {label:'Sales', data:results.monthly.map(x=>x.sales_amount), tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:5, fill:false, clip:false, yAxisID:'y'},
+          {label:'Store Count', data:results.monthly.map(x=>x.store_count), tension:0.35, borderWidth:2, pointRadius:2, pointHoverRadius:4, fill:false, clip:false, yAxisID:'y1'}
+        ]
+      },
       options:{
         responsive:true,
         maintainAspectRatio:false,
+        interaction:{mode:'index', intersect:false},
         layout:{padding:{top:28,right:40,bottom:12,left:40}},
         scales:{
-          x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
-          y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
+          x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:0,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+          y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}},
+          y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, border:{display:false}, ticks:{padding:8,color:'#55627a',font:{size:11}, precision:0}}
         },
         plugins:{
-          legend:{display:false,labels:{boxWidth:28,padding:16}},
+          legend:{display:true, labels:{boxWidth:28,padding:16}},
+          tooltip:{enabled:true, mode:'index', intersect:false},
           datalabels:{
-            align:'top',
+            display:(ctx)=>ctx.datasetIndex===0,
             anchor:'end',
+            align:'end',
             clamp:true,
             clip:false,
             offset:4,
@@ -968,6 +1442,8 @@ function updateDashboardCharts(mode){
       }
     });
 
+    setDownloadTarget('dashboard_results.xlsx', [{ name:'Monthly Sales', rows: results.monthly || [] }, { name:'Repurchase Structure', rows: results.repurchaseDistribution || [] }]);
+    clearActiveGlows();
     appState.charts.repurchase = new Chart(document.getElementById('repurchaseChart'), {
       type:'bar',
       data:{ labels:results.repurchaseDistribution.map(x=>x.order_bucket), datasets:[{label:'Members', data:results.repurchaseDistribution.map(x=>x.member_count), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(results.repurchaseDistribution.length).bg, borderColor:getChartPalette(results.repurchaseDistribution.length).border, borderWidth:1}] },
@@ -999,18 +1475,24 @@ function updateDashboardCharts(mode){
     rows = results.storeRank.slice(0, 10);
     labelKey = 'store';
     valueKey = 'performance';
+    setDownloadTarget('top_stores.xlsx', [{ name:'Top Stores', rows: results.storeRank || [] }]);
+    setActiveGlow('#topStoresCard');
   } else if (mode === 'salespeople'){
     leftTitle.textContent = 'Top 10 Salespeople Performance';
     rightTitle.textContent = 'Top 10 Salespeople Share';
     rows = results.salespersonRank.slice(0, 10);
     labelKey = 'salesperson';
     valueKey = 'performance';
+    setDownloadTarget('top_salespeople.xlsx', [{ name:'Top Salespeople', rows: results.salespersonRank || [] }]);
+    setActiveGlow('#topSalespeopleCard');
   } else if (mode === 'products'){
     leftTitle.textContent = 'Top 10 Products Sales';
     rightTitle.textContent = 'Top 10 Products Share';
     rows = results.productRank.slice(0, 10);
     labelKey = 'product';
     valueKey = 'sales_amount';
+    setDownloadTarget('top_products.xlsx', [{ name:'Top Products', rows: results.productRank || [] }]);
+    setActiveGlow('#topProductsCard');
   }
 
   appState.charts.monthly = new Chart(document.getElementById('monthlyChart'), {
@@ -1063,23 +1545,23 @@ function updateDashboardCharts(mode){
 function renderCharts(results){
   updateDashboardCharts('default');
 }
-function getFilteredSleepList(){
-  if (!appState.results) return [];
-  const rows = appState.results.results.sleepList || [];
-  const salespersonFilter = normalizeText(document.getElementById('filterSalesperson')?.value).toLowerCase();
-  const storeFilter = normalizeText(document.getElementById('filterStore')?.value).toLowerCase();
-  return rows.filter(r => {
-    const salesperson = normalizeText(r.last_salesperson || r.latest_salesperson || '').toLowerCase();
-    const store = normalizeText(r.last_store || r.latest_store || '').toLowerCase();
-    const okSales = !salespersonFilter || salesperson.includes(salespersonFilter);
-    const okStore = !storeFilter || store.includes(storeFilter);
+function getFilteredSleepList(sourceResults){
+  const list = sourceResults?.sleepList || appState.results?.results?.sleepList || [];
+  const salespersonText = normalizeText(document.getElementById('filterSalesperson')?.value || '').toLowerCase();
+  const storeText = normalizeText(document.getElementById('filterStore')?.value || '').toLowerCase();
+  return list.filter(row => {
+    const okSales = !salespersonText || normalizeText(row.latest_salesperson || row.last_salesperson || '').toLowerCase().includes(salespersonText);
+    const okStore = !storeText || normalizeText(row.last_store || row.latest_store || '').toLowerCase().includes(storeText);
     return okSales && okStore;
   });
 }
-function refreshSleepingTable(){
+function refreshSleepingTable(sourceResults){
   if (!appState.results) return;
-  const filtered = getFilteredSleepList();
+  const filtered = getFilteredSleepList(sourceResults);
   renderTable('sleepListTable', filtered, {total_spend:fmtCurrency, order_count:fmtInt, avg_ticket:fmtCurrency, repurchase_times:fmtInt, sleep_days:fmtInt}, true);
+  if (document.querySelector('.tab.active')?.dataset.tab === 'sleeping') {
+    setDownloadTarget('sleeping_member_wake_up_list.xlsx', [{ name:'Sleeping Member Wake-up List', rows: filtered || [] }]);
+  }
 }
 
 function renderRankingOverviewCards(results){
@@ -1100,33 +1582,33 @@ function hideDuplicateRankingCards(){
 }
 function renderResults(results, mappings){
   document.getElementById('resultArea').classList.remove('hidden');
-  document.getElementById('kpiSales').textContent = fmtCurrency(results.kpis.totalSales);
-  document.getElementById('kpiOrders').textContent = fmtInt(results.kpis.totalOrders);
-  document.getElementById('kpiReg').textContent = fmtPct(results.kpis.memberRegistrationRate);
-  document.getElementById('kpiRep').textContent = fmtPct(results.kpis.repurchaseRate);
-  document.getElementById('kpiRepTimes').textContent = Number(results.kpis.averageRepurchaseTimes || 0).toFixed(2);
-  document.getElementById('kpiSleep').textContent = fmtInt(results.kpis.sleepingMembers);
-  document.getElementById('kpiASleep').textContent = fmtInt(results.kpis.aClassSleepingMembers);
-  document.getElementById('kpiFiles').textContent = fmtInt(results.kpis.filesLoaded);
 
-  renderMiniList('topStores', results.storeRank, 'store', 'performance', fmtCurrency);
-  renderMiniList('topSalespeople', results.salespersonRank, 'salesperson', 'performance', fmtCurrency);
-  renderMiniList('topProducts', results.productRank, 'product', 'sales_amount', fmtCurrency);
-  renderRankingOverviewCards(results);
+  // default dashboard date range from data
+  const datedRows = (appState.results?.originalCleaned || []).filter(r => r.date).sort((a,b)=>(a.date?.getTime?.()||0)-(b.date?.getTime?.()||0));
+  const startInput = document.getElementById('dashboardStartDate');
+  const endInput = document.getElementById('dashboardEndDate');
+  if (startInput && !startInput.value && datedRows.length) startInput.value = ymd(datedRows[0].date);
+  if (endInput && !endInput.value && results.sleepSummary?.[0]?.value) endInput.value = results.sleepSummary[0].value;
 
-  renderTable('storeRankTable', results.storeRank, {performance:fmtCurrency}, true);
-  renderTable('salesRankTable', results.salespersonRank, {performance:fmtCurrency}, true);
-  renderTable('productRankTable', results.productRank, {sales_amount:fmtCurrency, sales_qty:fmtInt, sales_orders:fmtInt}, true);
-  renderTable('ticketRankTable', results.ticketRank, {total_sales:fmtCurrency, order_count:fmtInt, avg_ticket:fmtCurrency}, true);
-  renderTable('memberRankTable', results.memberRank, {total_spend:fmtCurrency, order_count:fmtInt, avg_ticket:fmtCurrency, repurchase_times:fmtInt}, true);
-  renderTable('sleepByStoreTable', results.sleepByStore, {sleeping_members:fmtInt, historical_spend:fmtCurrency}, true);
-  refreshSleepingTable();
-  renderTable('fileCheckTable', results.fileCheck, {included_rows:fmtInt, order_count:fmtInt, q_sum:fmtCurrency, negative_rows:fmtInt, negative_sum:fmtCurrency}, true);
-  renderTable('mappingTable', mappings, {}, true);
-  renderTable('sleepSummary', results.sleepSummary, {value:v => typeof v === 'number' ? (String(v).includes('.') ? fmtCurrency(v) : fmtInt(v)) : v}, true);
-  renderCharts(results);
-  renderExtraTabCharts(results);
+  updateDateRangeTriggerText();
+  populateDashboardStoreOptions();
+  populateDashboardSalespersonOptions();
+
+  // validation stays from original full run
+  renderTable('fileCheckTable', results.fileCheck || [], {included_rows:fmtInt, order_count:fmtInt, q_sum:fmtCurrency, negative_rows:fmtInt, negative_sum:fmtCurrency}, true);
+  renderTable('mappingTable', mappings || [], {}, true);
+
+  // render everything from current filters
+  onGlobalFiltersChanged();
+  updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
+
+  setDownloadTarget('dashboard_results.xlsx', [
+    { name:'Monthly Sales', rows: getActiveResults()?.monthly || results.monthly || [] },
+    { name:'Repurchase Structure', rows: getActiveResults()?.repurchaseDistribution || results.repurchaseDistribution || [] }
+  ]);
+
   hideDuplicateRankingCards();
+  syncResultAreaToControlPanel();
 }
 
 async function downloadWorkbook(filename, sheets){
@@ -1226,15 +1708,66 @@ function toCSV(rows){
   };
   return [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n');
 }
+
+function updateControlVisibility(activeTab){
+  const visibleMap = {
+    dashboard: ['dashboardDateRange','dashboardMultiFilters'],
+    rankings: [],
+    members: [],
+    sleeping: ['sleepDays','sleepMinOrders','aclassMinAmount','filterSalesperson','filterStore'],
+    validation: []
+  };
+  const visible = new Set(visibleMap[activeTab] || []);
+  document.querySelectorAll('.control-field').forEach(el => {
+    el.classList.toggle('hidden-control', !visible.has(el.dataset.control));
+  });
+}
+
+window.addEventListener('load', syncResultAreaToControlPanel);
+window.addEventListener('resize', syncResultAreaToControlPanel);
+
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
     tab.classList.add('active');
     document.getElementById(tab.dataset.tab).classList.remove('hidden');
+    updateControlVisibility(tab.dataset.tab);
+    if (tab.dataset.tab === 'dashboard') {
+      populateDashboardStoreOptions();
+      populateDashboardSalespersonOptions();
+      updateDateRangeTriggerText();
+      updateDashboardCharts('default');
+    } else if (tab.dataset.tab === 'rankings') {
+      renderRankingTabCharts(appState.rankingsMode || 'store');
+    } else if (tab.dataset.tab === 'members') {
+      renderMembersTabCharts(appState.membersMode || 'spend');
+    } else if (tab.dataset.tab === 'sleeping') {
+      renderSleepingTabCharts(appState.sleepingMode || 'store');
+      refreshSleepingTable(getActiveResults());
+    } else if (tab.dataset.tab === 'validation') {
+      setDownloadTarget('validation.xlsx', [
+        { name:'File Validation', rows: appState.results?.results?.fileCheck || [] },
+        { name:'Resolved Column Mapping', rows: appState.results?.mappings || [] }
+      ]);
+    }
   });
 });
+
+document.getElementById('dashboardStartDate')?.addEventListener('change', updateDateRangeTriggerText);
+document.getElementById('dashboardEndDate')?.addEventListener('change', updateDateRangeTriggerText);
+document.getElementById('dashboardStoreSearch')?.addEventListener('input', populateDashboardStoreOptions);
+document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
+document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
+document.getElementById('filterSalesperson')?.addEventListener('input', refreshSleepingTable);
+document.getElementById('filterStore')?.addEventListener('input', refreshSleepingTable);
+updateControlVisibility('dashboard');
+populateDashboardStoreOptions();
+populateDashboardSalespersonOptions();
+
 document.getElementById('topStoresCard')?.addEventListener('click', () => updateDashboardCharts('stores'));
+document.getElementById('topSalespeopleCard')?.addEventListener('click', () => updateDashboardCharts('salespeople'));
+document.getElementById('topProductsCard')?.addEventListener('click', () => updateDashboardCharts('products'));
 document.getElementById('topSalespeopleCard')?.addEventListener('click', () => updateDashboardCharts('salespeople'));
 document.getElementById('topProductsCard')?.addEventListener('click', () => updateDashboardCharts('products'));
 document.querySelector('#dashboard .grid-2 .card:first-child')?.addEventListener('dblclick', () => updateDashboardCharts('default'));
@@ -1288,7 +1821,8 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     if (!prepared.cleaned.length){ status.textContent = 'No valid data rows were found.'; return; }
     status.textContent = 'Calculating results...';
     const results = analyze(prepared.cleaned, cfg);
-    appState.results = { results, mappings: prepared.mappings };
+    appState.lastCfg = cfg;
+    appState.results = { results, mappings: prepared.mappings, originalCleaned: prepared.cleaned };
     renderResults(results, prepared.mappings);
     status.innerHTML = '<span class="ok">Done.</span> Loaded ' + prepared.cleaned.length.toLocaleString() + ' valid rows from ' + files.length + ' file(s).';
   }catch(err){
@@ -1298,11 +1832,42 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
 });
 document.getElementById('filterSalesperson').addEventListener('input', refreshSleepingTable);
 document.getElementById('filterStore').addEventListener('input', refreshSleepingTable);
+
+document.getElementById('dashboardDateTrigger')?.addEventListener('click', () => toggleDropdown('dashboardDateMenu'));
+
+document.getElementById('clearStoreBtn')?.addEventListener('click', () => {
+  document.getElementById('dashboardStoreSearch').value = '';
+  document.querySelectorAll('#dashboardStoreOptions input[type="checkbox"]').forEach(x => x.checked = false);
+  populateDashboardStoreOptions();
+  populateDashboardSalespersonOptions();
+  onGlobalFiltersChanged();
+});
+document.getElementById('clearSalespeopleBtn')?.addEventListener('click', () => {
+  document.getElementById('dashboardSalespersonSearch').value = '';
+  document.querySelectorAll('#dashboardSalespersonOptions input[type="checkbox"]').forEach(x => x.checked = false);
+  populateDashboardSalespersonOptions();
+  onGlobalFiltersChanged();
+});
+document.getElementById('dashboardStoreTrigger')?.addEventListener('click', () => toggleDropdown('dashboardStoreMenu'));
+document.getElementById('dashboardSalespersonTrigger')?.addEventListener('click', () => toggleDropdown('dashboardSalespersonMenu'));
+document.getElementById('applyDateRangeBtn')?.addEventListener('click', () => {
+  updateDateRangeTriggerText();
+  toggleDropdown('dashboardDateMenu', false);
+  onGlobalFiltersChanged();
+});
+document.addEventListener('click', (e) => {
+  const inDropdown = e.target.closest('.filter-dropdown');
+  if (!inDropdown) {
+    document.querySelectorAll('.filter-menu').forEach(m => m.classList.add('hidden'));
+    showOverlayLight(false);
+  }
+});
+
 document.getElementById('downloadSleepXlsxBtn').addEventListener('click', () => {
-  if (!appState.results) return;
-  downloadWorkbook('sleeping_members.xlsx', [
-    { name:'Sleeping Members', rows: getFilteredSleepList() || [] }
-  ]);
+  const btn = document.getElementById('downloadSleepXlsxBtn');
+  btn?.classList.add('clicked-edge');
+  setTimeout(() => btn?.classList.remove('clicked-edge'), 1400);
+  useDownloadTarget();
 });
 </script>
 </body>
