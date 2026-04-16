@@ -316,11 +316,9 @@ input[type="date"], select.control-select{
           </div>
           <div class="col control-field" data-control="filterSalesperson">
             <label for="filterSalesperson">Filter by salesperson</label>
-            <input id="filterSalesperson" type="text" placeholder="" />
-          </div>
-          <div class="col control-field" data-control="filterStore">
-            <label for="filterStore">Filter by store</label>
-            <input id="filterStore" type="text" placeholder="" />
+            <select id="filterSalesperson" class="control-select">
+              <option value="">All salespeople</option>
+            </select>
           </div>
         </div>
       </div>
@@ -876,6 +874,16 @@ function selectedDashboardSalespeople(){
     .map(x => normalizeText(x.value))
     .filter(Boolean);
 }
+function populateSleepingSalespersonOptions(){
+  const select = document.getElementById('filterSalesperson');
+  if (!select || !appState.results?.originalCleaned) return;
+  const previousValue = select.value || '';
+  const sourceRows = getDashboardFilteredBaseRows();
+  const names = [...new Set(sourceRows.map(r => normalizeText(r.salesperson)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  select.innerHTML = '<option value="">All salespeople</option>' + names.map(name => '<option value="' + name.replace(/"/g, '&quot;') + '">' + name + '</option>').join('');
+  select.value = names.includes(previousValue) ? previousValue : '';
+}
+
 function updateDashboardSalespersonSelectedText(){
   const el = document.getElementById('dashboardSalespersonTriggerText');
   if (!el) return;
@@ -1372,8 +1380,18 @@ function onGlobalFiltersChanged(){
   updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
 }
 
-function getDashboardFilteredResults(){
-  if (!appState.results) return null;
+function getCurrentAnalysisConfig(){
+  return {
+    sleepDays: Number(document.getElementById('sleepDays')?.value || 90),
+    sleepMinOrders: Number(document.getElementById('sleepMinOrders')?.value || 2),
+    sleepMinAmount: Number(document.getElementById('sleepMinAmount')?.value || 1000),
+    aclassMinAmount: Number(document.getElementById('aclassMinAmount')?.value || 3000),
+    aclassMinOrders: Number(document.getElementById('aclassMinOrders')?.value || 5),
+  };
+}
+
+function getDashboardFilteredBaseRows(){
+  if (!appState.results) return [];
   const original = appState.results.originalCleaned || [];
   const startValue = document.getElementById('dashboardStartDate')?.value || '';
   const endValue = document.getElementById('dashboardEndDate')?.value || '';
@@ -1381,15 +1399,25 @@ function getDashboardFilteredResults(){
   const selectedSalespeople = selectedDashboardSalespeople();
   const startDate = startValue ? new Date(startValue + 'T00:00:00') : null;
   const endDate = endValue ? new Date(endValue + 'T23:59:59') : null;
-  const filtered = original.filter(r => {
+  return original.filter(r => {
     const okStart = !startDate || !r.date || r.date >= startDate;
     const okEnd = !endDate || !r.date || r.date <= endDate;
     const okStore = !selectedStores.length || selectedStores.includes(normalizeText(r.store));
     const okSalesperson = !selectedSalespeople.length || selectedSalespeople.includes(normalizeText(r.salesperson));
     return okStart && okEnd && okStore && okSalesperson;
   });
+}
+
+function getDashboardFilteredResults(){
+  if (!appState.results) return null;
+  const baseRows = getDashboardFilteredBaseRows();
+  const endValue = document.getElementById('dashboardEndDate')?.value || '';
+  const selectedSleepingSalesperson = normalizeText(document.getElementById('filterSalesperson')?.value || '');
+  const endDate = endValue ? new Date(endValue + 'T23:59:59') : null;
+  const filtered = baseRows.filter(r => !selectedSleepingSalesperson || normalizeText(r.salesperson) === selectedSleepingSalesperson);
   if (!filtered.length) return null;
-  const cfg = appState.lastCfg || {sleepDays:90,sleepMinOrders:2,sleepMinAmount:1000,aclassMinAmount:3000,aclassMinOrders:5};
+  const cfg = getCurrentAnalysisConfig();
+  appState.lastCfg = cfg;
   return analyze(filtered, { ...cfg, analysisDate: endDate || undefined });
 }
 
@@ -1546,14 +1574,7 @@ function renderCharts(results){
   updateDashboardCharts('default');
 }
 function getFilteredSleepList(sourceResults){
-  const list = sourceResults?.sleepList || appState.results?.results?.sleepList || [];
-  const salespersonText = normalizeText(document.getElementById('filterSalesperson')?.value || '').toLowerCase();
-  const storeText = normalizeText(document.getElementById('filterStore')?.value || '').toLowerCase();
-  return list.filter(row => {
-    const okSales = !salespersonText || normalizeText(row.latest_salesperson || row.last_salesperson || '').toLowerCase().includes(salespersonText);
-    const okStore = !storeText || normalizeText(row.last_store || row.latest_store || '').toLowerCase().includes(storeText);
-    return okSales && okStore;
-  });
+  return sourceResults?.sleepList || appState.results?.results?.sleepList || [];
 }
 function refreshSleepingTable(sourceResults){
   if (!appState.results) return;
@@ -1712,15 +1733,20 @@ function toCSV(rows){
 function updateControlVisibility(activeTab){
   const visibleMap = {
     dashboard: ['dashboardDateRange','dashboardMultiFilters'],
-    rankings: [],
-    members: [],
-    sleeping: ['sleepDays','sleepMinOrders','aclassMinAmount','filterSalesperson','filterStore'],
-    validation: []
+    rankings: ['dashboardDateRange','dashboardMultiFilters'],
+    members: ['dashboardDateRange','dashboardMultiFilters'],
+    sleeping: ['dashboardDateRange','dashboardMultiFilters','sleepDays','sleepMinOrders','aclassMinAmount','filterSalesperson'],
+    validation: ['dashboardDateRange','dashboardMultiFilters']
   };
   const visible = new Set(visibleMap[activeTab] || []);
   document.querySelectorAll('.control-field').forEach(el => {
-    el.classList.toggle('hidden-control', !visible.has(el.dataset.control));
+    const shouldShow = visible.has(el.dataset.control);
+    el.classList.toggle('hidden-control', !shouldShow);
+    el.style.display = shouldShow ? '' : 'none';
   });
+
+  document.querySelectorAll('.filter-menu').forEach(menu => menu.classList.add('hidden'));
+  showOverlayLight(false);
 }
 
 window.addEventListener('load', syncResultAreaToControlPanel);
@@ -1728,6 +1754,8 @@ window.addEventListener('resize', syncResultAreaToControlPanel);
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
+    document.querySelectorAll('.filter-menu').forEach(menu => menu.classList.add('hidden'));
+    showOverlayLight(false);
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
     tab.classList.add('active');
@@ -1736,6 +1764,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'dashboard') {
       populateDashboardStoreOptions();
       populateDashboardSalespersonOptions();
+      populateSleepingSalespersonOptions();
       updateDateRangeTriggerText();
       updateDashboardCharts('default');
     } else if (tab.dataset.tab === 'rankings') {
@@ -1743,6 +1772,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     } else if (tab.dataset.tab === 'members') {
       renderMembersTabCharts(appState.membersMode || 'spend');
     } else if (tab.dataset.tab === 'sleeping') {
+      populateSleepingSalespersonOptions();
       renderSleepingTabCharts(appState.sleepingMode || 'store');
       refreshSleepingTable(getActiveResults());
     } else if (tab.dataset.tab === 'validation') {
@@ -1759,11 +1789,14 @@ document.getElementById('dashboardEndDate')?.addEventListener('change', updateDa
 document.getElementById('dashboardStoreSearch')?.addEventListener('input', populateDashboardStoreOptions);
 document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
 document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
-document.getElementById('filterSalesperson')?.addEventListener('input', refreshSleepingTable);
-document.getElementById('filterStore')?.addEventListener('input', refreshSleepingTable);
+document.getElementById('filterSalesperson')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('sleepDays')?.addEventListener('input', onGlobalFiltersChanged);
+document.getElementById('sleepMinOrders')?.addEventListener('input', onGlobalFiltersChanged);
+document.getElementById('aclassMinAmount')?.addEventListener('input', onGlobalFiltersChanged);
 updateControlVisibility('dashboard');
 populateDashboardStoreOptions();
 populateDashboardSalespersonOptions();
+populateSleepingSalespersonOptions();
 
 document.getElementById('topStoresCard')?.addEventListener('click', () => updateDashboardCharts('stores'));
 document.getElementById('topSalespeopleCard')?.addEventListener('click', () => updateDashboardCharts('salespeople'));
@@ -1807,13 +1840,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     order_no: normalizeText(document.getElementById('orderHeader')?.value || ''),
     qty:'', member_id:'', member_name:'', phone:''
   };
-  const cfg = {
-    sleepDays: Number(document.getElementById('sleepDays').value || 90),
-    sleepMinOrders: Number(document.getElementById('sleepMinOrders').value || 2),
-    sleepMinAmount: Number(document.getElementById('sleepMinAmount').value || 1000),
-    aclassMinAmount: Number(document.getElementById('aclassMinAmount').value || 3000),
-    aclassMinOrders: Number(document.getElementById('aclassMinOrders')?.value || 5),
-  };
+  const cfg = getCurrentAnalysisConfig();
 
   try{
     status.textContent = 'Reading files...';
@@ -1823,6 +1850,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     const results = analyze(prepared.cleaned, cfg);
     appState.lastCfg = cfg;
     appState.results = { results, mappings: prepared.mappings, originalCleaned: prepared.cleaned };
+    populateSleepingSalespersonOptions();
     renderResults(results, prepared.mappings);
     status.innerHTML = '<span class="ok">Done.</span> Loaded ' + prepared.cleaned.length.toLocaleString() + ' valid rows from ' + files.length + ' file(s).';
   }catch(err){
@@ -1830,8 +1858,10 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     status.innerHTML = '<span class="warn">Error:</span> ' + (err.message || err);
   }
 });
-document.getElementById('filterSalesperson').addEventListener('input', refreshSleepingTable);
-document.getElementById('filterStore').addEventListener('input', refreshSleepingTable);
+document.getElementById('filterSalesperson')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('sleepDays')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('sleepMinOrders')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('aclassMinAmount')?.addEventListener('change', onGlobalFiltersChanged);
 
 document.getElementById('dashboardDateTrigger')?.addEventListener('click', () => toggleDropdown('dashboardDateMenu'));
 
@@ -1840,12 +1870,14 @@ document.getElementById('clearStoreBtn')?.addEventListener('click', () => {
   document.querySelectorAll('#dashboardStoreOptions input[type="checkbox"]').forEach(x => x.checked = false);
   populateDashboardStoreOptions();
   populateDashboardSalespersonOptions();
+  populateSleepingSalespersonOptions();
   onGlobalFiltersChanged();
 });
 document.getElementById('clearSalespeopleBtn')?.addEventListener('click', () => {
   document.getElementById('dashboardSalespersonSearch').value = '';
   document.querySelectorAll('#dashboardSalespersonOptions input[type="checkbox"]').forEach(x => x.checked = false);
   populateDashboardSalespersonOptions();
+  populateSleepingSalespersonOptions();
   onGlobalFiltersChanged();
 });
 document.getElementById('dashboardStoreTrigger')?.addEventListener('click', () => toggleDropdown('dashboardStoreMenu'));
