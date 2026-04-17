@@ -107,20 +107,21 @@ input[type="date"], select.control-select{
   left:0;
   width:100%;
   min-width:300px;
+  max-width:min(420px,calc(100vw - 24px));
   z-index:80;
-  background:rgba(255,255,255,.995);
+  background:#ffffff;
   border:1px solid #cfd6fb;
   border-radius:14px;
   padding:12px;
-  box-shadow:0 24px 56px rgba(17,24,39,.24), 0 0 0 1px rgba(254,112,246,.18), 0 0 34px rgba(254,112,246,.35);
-  backdrop-filter:blur(4px);
+  box-shadow:0 10px 22px rgba(17,24,39,.14), 0 0 0 1px rgba(254,112,246,.12);
+  backdrop-filter:none;
 }
 .range-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .range-apply{display:flex;justify-content:flex-end;margin-top:10px}
 .range-trigger-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .menu-label{font-size:12px;color:#55627a;margin-bottom:4px}
 .overlay-light{
-  position:fixed;inset:0;background:rgba(254,112,246,.12);backdrop-filter:blur(3px);z-index:70;
+  position:fixed;inset:0;background:rgba(255,255,255,.04);backdrop-filter:none;z-index:70;
 }
 
 .store-options{
@@ -182,6 +183,11 @@ input[type="date"], select.control-select{
     }
     input[type="file"]{padding:8px 0}
     button{border:1px solid #007a31;background:linear-gradient(180deg, #00963d, #007a31);color:#fff;padding:11px 16px;border-radius:12px;cursor:pointer;font-weight:600;box-shadow:0 0 18px rgba(105,105,159,.34)}
+    button,.filter-trigger{transition:transform .16s ease,filter .16s ease,box-shadow .16s ease}
+    button:hover,.filter-trigger:hover{transform:translateY(-1px);filter:brightness(1.08);box-shadow:0 6px 18px rgba(0,0,0,.18),0 0 18px rgba(105,105,159,.35)}
+    button:active,.filter-trigger:active{transform:translateY(0);filter:brightness(.96)}
+    button:focus-visible,.filter-trigger:focus-visible{outline:2px solid #fe70f6;outline-offset:2px}
+    button:disabled,button[aria-disabled="true"]{cursor:not-allowed;opacity:.6;filter:none;transform:none;box-shadow:none}
     .analyze-wrap{
       position:relative;
       display:inline-flex;
@@ -263,7 +269,10 @@ input[type="date"], select.control-select{
     tr:hover td{background:#f4f7ff}
     canvas{max-height:320px}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
-    .tab{padding:10px 14px;border-radius:999px;background:#ffffff;color:var(--text);cursor:pointer;font-weight:600;border:1px solid #7690f3;box-shadow:0 0 12px rgba(105,105,159,.22)}
+    .tab{padding:10px 14px;border-radius:999px;background:#ffffff;color:var(--text);cursor:pointer;font-weight:600;border:1px solid #7690f3;box-shadow:0 0 12px rgba(105,105,159,.22);transition:transform .16s ease,filter .16s ease,box-shadow .16s ease}
+    .tab:hover{transform:translateY(-1px);filter:brightness(1.03);box-shadow:0 6px 18px rgba(0,0,0,.15),0 0 18px rgba(105,105,159,.26)}
+    .tab:active{transform:translateY(0);filter:brightness(.98)}
+    .tab:focus-visible{outline:2px solid #fe70f6;outline-offset:2px}
     .tab.active{background:#5988f3;color:#ffffff;border-color:#5988f3;box-shadow:0 0 18px rgba(89,136,243,.28)}
     .hidden{display:none}
     #resultArea{width:100%;margin:0 auto}
@@ -351,7 +360,7 @@ input[type="date"], select.control-select{
                 </button>
                 <div class="filter-menu hidden" id="dashboardStoreMenu">
                   <input id="dashboardStoreSearch" class="store-search-input" type="text" placeholder="Search store" />
-                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearStoreBtn">Clear</button></div>
+                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearStoreBtn">Done</button></div>
                   <div id="dashboardStoreOptions" class="store-options"></div>
                 </div>
               </div>
@@ -365,7 +374,7 @@ input[type="date"], select.control-select{
                 </button>
                 <div class="filter-menu hidden" id="dashboardSalespersonMenu">
                   <input id="dashboardSalespersonSearch" class="store-search-input" type="text" placeholder="Search salesperson" />
-                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearSalespeopleBtn">Clear</button></div>
+                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearSalespeopleBtn">Done</button></div>
                   <div id="dashboardSalespersonOptions" class="store-options"></div>
                 </div>
               </div>
@@ -389,10 +398,18 @@ input[type="date"], select.control-select{
             <input id="aclassMinAmount" type="number" value="3000" min="0" step="100" />
           </div>
           <div class="col control-field" data-control="filterSalesperson">
-            <label for="filterSalesperson">Filter by salesperson</label>
-            <select id="filterSalesperson" class="control-select">
-              <option value="">All salespeople</option>
-            </select>
+            <label>Filter by salesperson</label>
+            <div class="filter-dropdown" id="sleepSalespersonDropdown">
+              <button type="button" class="filter-trigger" id="sleepSalespersonTrigger">
+                <span id="sleepSalespersonTriggerText">All salespeople</span>
+                <span class="filter-caret">▾</span>
+              </button>
+              <div class="filter-menu hidden" id="sleepSalespersonMenu">
+                <input id="sleepSalespersonSearch" class="store-search-input" type="text" placeholder="Search salesperson" />
+                <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearSleepSalespersonBtn">Done</button></div>
+                <div id="sleepSalespersonOptions" class="store-options"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -584,7 +601,8 @@ Chart.register(ChartDataLabels);
 const hoverGuidePlugin = {
   id: 'hoverGuidePlugin',
   afterDatasetsDraw(chart) {
-    const active = chart.tooltip && chart.tooltip.getActiveElements ? chart.tooltip.getActiveElements() : [];
+    if (!['line', 'bar'].includes(chart.config?.type)) return;
+    const active = chart.getActiveElements ? chart.getActiveElements() : (chart.tooltip && chart.tooltip.getActiveElements ? chart.tooltip.getActiveElements() : []);
     if (!active || !active.length) return;
     const {ctx, chartArea:{top,bottom}} = chart;
     const x = active[0].element.x;
@@ -605,7 +623,14 @@ let appState = {
   results: null,
   charts: {},
   selectedStores: new Set(),
-  selectedSalespeople: new Set()
+  selectedSalespeople: new Set(),
+  selectedSleepingSalesperson: '',
+  dashboardShareSelection: { mode: '', index: null },
+  dashboardShareHoverIndex: null,
+  dashboardShareHoverSource: '',
+  rankingsHoverIndex: null,
+  membersHoverIndex: null,
+  sleepingHoverIndex: null
 };
 
 function syncResultAreaToControlPanel(){
@@ -955,14 +980,37 @@ function useDownloadTarget(){
 function selectedDashboardSalespeople(){
   return [...appState.selectedSalespeople];
 }
+function selectedSleepingSalesperson(){
+  return normalizeText(appState.selectedSleepingSalesperson || '');
+}
+function updateSleepingSalespersonSelectedText(){
+  const el = document.getElementById('sleepSalespersonTriggerText');
+  if (!el) return;
+  el.textContent = selectedSleepingSalesperson() || 'All salespeople';
+}
 function populateSleepingSalespersonOptions(){
-  const select = document.getElementById('filterSalesperson');
-  if (!select || !appState.results?.originalCleaned) return;
-  const previousValue = select.value || '';
+  const wrap = document.getElementById('sleepSalespersonOptions');
+  if (!wrap || !appState.results?.originalCleaned) return;
+  const search = (document.getElementById('sleepSalespersonSearch')?.value || '').trim().toLowerCase();
+  const previousValue = selectedSleepingSalesperson();
   const sourceRows = getDashboardFilteredBaseRows();
   const names = [...new Set(sourceRows.map(r => normalizeText(r.salesperson)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  select.innerHTML = '<option value="">All salespeople</option>' + names.map(name => '<option value="' + name.replace(/"/g, '&quot;') + '">' + name + '</option>').join('');
-  select.value = names.includes(previousValue) ? previousValue : '';
+  appState.selectedSleepingSalesperson = names.includes(previousValue) ? previousValue : '';
+  const selected = selectedSleepingSalesperson();
+  const filtered = names.filter(name => !search || name === selected || name.toLowerCase().includes(search));
+  const optionsHtml = filtered.map(name => {
+    const checked = name === selected;
+    return '<label class="store-option"><input type="radio" name="sleepSalespersonFilter" value="' + name.replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '> <span>' + name + '</span></label>';
+  }).join('');
+  wrap.innerHTML = '<label class="store-option"><input type="radio" name="sleepSalespersonFilter" value=""' + (!selected ? ' checked' : '') + '> <span>All salespeople</span></label>' + (optionsHtml || '<div class="small">No matching salespeople</div>');
+  wrap.querySelectorAll('input[name="sleepSalespersonFilter"]').forEach(input => {
+    input.addEventListener('change', () => {
+      appState.selectedSleepingSalesperson = normalizeText(input.value);
+      updateSleepingSalespersonSelectedText();
+      onGlobalFiltersChanged(true);
+    });
+  });
+  updateSleepingSalespersonSelectedText();
 }
 
 function updateDashboardSalespersonSelectedText(){
@@ -990,14 +1038,18 @@ function populateDashboardSalespersonOptions(){
   wrap.innerHTML = '<label class="store-option"><input type="checkbox" id="dashboardSalespeopleAllOption"> <span>All salespeople</span></label>' + (optionsHtml || '<div class="small">No matching salespeople</div>');
   const allOpt = document.getElementById('dashboardSalespeopleAllOption');
   if (allOpt) {
-    allOpt.checked = appState.selectedSalespeople.size === 0;
+    allOpt.checked = appState.selectedSalespeople.size === names.length && names.length > 0;
     allOpt.addEventListener('change', () => {
       if (allOpt.checked) {
+        appState.selectedSalespeople = new Set(names);
+        wrap.querySelectorAll('input[type="checkbox"]').forEach(x => { if (x !== allOpt) x.checked = true; });
+      } else {
         appState.selectedSalespeople.clear();
         wrap.querySelectorAll('input[type="checkbox"]').forEach(x => { if (x !== allOpt) x.checked = false; });
         updateDashboardSalespersonSelectedText();
-        onGlobalFiltersChanged();
       }
+      updateDashboardSalespersonSelectedText();
+      onGlobalFiltersChanged(true);
     });
   }
   wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -1006,9 +1058,9 @@ function populateDashboardSalespersonOptions(){
       const value = normalizeText(cb.value);
       if (cb.checked) appState.selectedSalespeople.add(value);
       else appState.selectedSalespeople.delete(value);
-      if (allOpt) allOpt.checked = false;
+      if (allOpt) allOpt.checked = appState.selectedSalespeople.size === names.length && names.length > 0;
       updateDashboardSalespersonSelectedText();
-      onGlobalFiltersChanged();
+      onGlobalFiltersChanged(true);
     });
   });
   updateDashboardSalespersonSelectedText();
@@ -1039,15 +1091,20 @@ function populateDashboardStoreOptions(){
   wrap.innerHTML = '<label class="store-option"><input type="checkbox" id="dashboardStoreAllOption"> <span>All stores</span></label>' + (optionsHtml || '<div class="small">No matching stores</div>');
   const allOpt = document.getElementById('dashboardStoreAllOption');
   if (allOpt) {
-    allOpt.checked = appState.selectedStores.size === 0;
+    allOpt.checked = appState.selectedStores.size === stores.length && stores.length > 0;
     allOpt.addEventListener('change', () => {
       if (allOpt.checked) {
+        appState.selectedStores = new Set(stores);
+        wrap.querySelectorAll('input[type="checkbox"]').forEach(x => { if (x !== allOpt) x.checked = true; });
+      } else {
         appState.selectedStores.clear();
         wrap.querySelectorAll('input[type="checkbox"]').forEach(x => { if (x !== allOpt) x.checked = false; });
         updateDashboardStoreSelectedText();
         populateDashboardSalespersonOptions();
-        onGlobalFiltersChanged();
       }
+      updateDashboardStoreSelectedText();
+      populateDashboardSalespersonOptions();
+      onGlobalFiltersChanged(true);
     });
   }
   wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -1056,10 +1113,10 @@ function populateDashboardStoreOptions(){
       const value = normalizeText(cb.value);
       if (cb.checked) appState.selectedStores.add(value);
       else appState.selectedStores.delete(value);
-      if (allOpt) allOpt.checked = false;
+      if (allOpt) allOpt.checked = appState.selectedStores.size === stores.length && stores.length > 0;
       updateDashboardStoreSelectedText();
       populateDashboardSalespersonOptions();
-      onGlobalFiltersChanged();
+        onGlobalFiltersChanged(true);
     });
   });
   updateDashboardStoreSelectedText();
@@ -1113,9 +1170,28 @@ function toggleDropdown(menuId, forceOpen){
   document.querySelectorAll('.filter-menu').forEach(m => m.classList.add('hidden'));
   if (willOpen) {
     menu.classList.remove('hidden');
+    placeDropdownMenu(menu);
     showOverlayLight(true);
   } else {
     showOverlayLight(false);
+  }
+}
+function placeDropdownMenu(menu){
+  if (!menu) return;
+  menu.style.left = '0';
+  menu.style.right = 'auto';
+  menu.style.transform = 'none';
+  const edge = 12;
+  let rect = menu.getBoundingClientRect();
+  if (rect.right > window.innerWidth - edge) {
+    menu.style.left = 'auto';
+    menu.style.right = '0';
+    rect = menu.getBoundingClientRect();
+  }
+  if (rect.left < edge) {
+    menu.style.left = edge + 'px';
+    menu.style.right = 'auto';
+    menu.style.transform = 'none';
   }
 }
 function clearActiveGlows(){
@@ -1146,6 +1222,27 @@ function setActiveGlow(selector){
   let el = typeof selector === 'string' ? document.querySelector(selector) : selector;
   if (el && el.classList.contains('section-title')) el = el.closest('.card');
   if (el) el.classList.add('active-glow');
+}
+function resolveHoverIndexFromEvent(chart, evt, elements){
+  if (elements && elements.length) return elements[0].index;
+  const native = evt?.native;
+  const xScale = chart?.scales?.x;
+  const labels = chart?.data?.labels || [];
+  if (!native || !xScale || !labels.length) return null;
+  const rect = native.target?.getBoundingClientRect?.();
+  const area = chart.chartArea;
+  if (!rect || !area) return null;
+  const x = native.clientX - rect.left;
+  const y = native.clientY - rect.top;
+  if (x < area.left || x > area.right || y < area.top - 8 || y > area.bottom + 72) return null;
+  const raw = xScale.getValueForPixel(x);
+  if (raw == null) return null;
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    const idx = Math.round(raw);
+    return idx >= 0 && idx < labels.length ? idx : null;
+  }
+  const idxFromLabel = labels.findIndex(label => String(label) === String(raw));
+  return idxFromLabel >= 0 ? idxFromLabel : null;
 }
 
 function renderRankingTabCharts(mode){
@@ -1221,6 +1318,72 @@ function renderRankingTabCharts(mode){
   const rightTitle = document.querySelector('#rankings .grid-2 .card:last-child .section-title');
   if (leftTitle) leftTitle.textContent = title1;
   if (rightTitle) rightTitle.textContent = title2;
+  appState.rankingsHoverIndex = null;
+
+  const miniConfig = {
+    store: { elId:'rankingsStoreMini', keyField:'store', valueField:'performance' },
+    salesperson: { elId:'rankingsSalespersonMini', keyField:'salesperson', valueField:'performance' },
+    product: { elId:'rankingsProductMini', keyField:'product', valueField:'sales_amount' },
+    ticket: { elId:'rankingsTicketMini', keyField:'salesperson', valueField:'avg_ticket' }
+  }[mode || 'store'];
+  const basePalette = getChartPalette(values.length);
+  const applyRankingHover = (hoverIndex, sourceChart) => {
+    appState.rankingsHoverIndex = hoverIndex;
+    const lineChart = appState.charts.rankingsLine;
+    const barChart = appState.charts.rankingsBar;
+    if (!lineChart || !barChart) return;
+    const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
+    lineChart.data.datasets[0].pointRadius = values.map((_, i) => idx == null ? 3 : (i === idx ? 7 : 3));
+    lineChart.data.datasets[0].pointHoverRadius = values.map((_, i) => idx == null ? 4 : (i === idx ? 9 : 3));
+    lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
+    lineChart.data.datasets[0].pointBackgroundColor = values.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
+    lineChart.data.datasets[0].pointBorderColor = values.map((_, i) => idx == null ? 'rgba(37,99,235,1)' : (i === idx ? 'rgba(29,78,216,1)' : 'rgba(37,99,235,1)'));
+    lineChart.data.datasets[0].pointBorderWidth = values.map((_, i) => idx != null && i === idx ? 3 : 1);
+    barChart.data.datasets[0].backgroundColor = values.map((_, i) => basePalette.bg[i]);
+    barChart.data.datasets[0].borderColor = values.map((_, i) => basePalette.border[i]);
+    barChart.data.datasets[0].borderWidth = values.map((_, i) => idx != null && i === idx ? 3.2 : 1.4);
+    if (leftTitle) leftTitle.textContent = idx != null ? (title1 + ' (Hover: ' + labels[idx] + ')') : title1;
+    if (rightTitle) rightTitle.textContent = idx != null ? (title2 + ' (Hover: ' + labels[idx] + ')') : title2;
+    if (miniConfig) {
+      const miniRows = idx != null && rows[idx] ? [rows[idx]] : rows;
+      renderMiniList(miniConfig.elId, miniRows, miniConfig.keyField, miniConfig.valueField, fmtCurrency);
+    }
+    lineChart.update('none');
+    barChart.update('none');
+    if (idx != null) {
+      const linePoint = lineChart.getDatasetMeta(0)?.data?.[idx];
+      const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
+      if (linePoint) {
+        lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (sourceChart === 'line') {
+          lineChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], { x: linePoint.x, y: linePoint.y });
+        } else {
+          lineChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+        }
+      }
+      if (barPoint) {
+        barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (sourceChart === 'bar') {
+          barChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], { x: barPoint.x, y: barPoint.y });
+        } else {
+          barChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+        }
+      }
+    } else {
+      lineChart.setActiveElements([]);
+      lineChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      barChart.setActiveElements([]);
+      barChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    }
+    lineChart.draw();
+    barChart.draw();
+  };
+  const handleHover = (evt, elements, sourceChart) => {
+    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.rankingsLine : appState.charts.rankingsBar, evt, elements);
+    if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
+    if (appState.rankingsHoverIndex === idx) return;
+    applyRankingHover(idx, sourceChart);
+  };
 
   appState.charts.rankingsLine = new Chart(document.getElementById('rankingsLineChart'), {
     type:'line',
@@ -1228,7 +1391,7 @@ function renderRankingTabCharts(mode){
       labels: labels,
       datasets:[{label:title1, data: values, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}]
     },
-    options: commonLabelOpts
+    options: { ...commonLabelOpts, onHover: (evt, elements) => handleHover(evt, elements, 'line') }
   });
 
   appState.charts.rankingsBar = new Chart(document.getElementById('rankingsBarChart'), {
@@ -1237,7 +1400,7 @@ function renderRankingTabCharts(mode){
       labels: labels,
       datasets:[{label:title2, data: values, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(values.length).bg, borderColor:getChartPalette(values.length).border, borderWidth:1}]
     },
-    options: commonLabelOpts
+    options: { ...commonLabelOpts, onHover: (evt, elements) => handleHover(evt, elements, 'bar') }
   });
 }
 
@@ -1305,19 +1468,65 @@ function renderMembersTabCharts(mode){
   const rightTitleEl = document.querySelector('#members .grid-2 .card:last-child .section-title');
   if (leftTitleEl) leftTitleEl.textContent = leftTitle;
   if (rightTitleEl) rightTitleEl.textContent = rightTitle;
+  appState.membersHoverIndex = null;
+  const memberPalette = getChartPalette(rightData.length);
+
+  const applyMembersHover = (hoverIndex, sourceChart) => {
+    const lineChart = appState.charts.membersLine;
+    const barChart = appState.charts.membersBar;
+    if (!lineChart || !barChart) return;
+    const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
+    appState.membersHoverIndex = idx;
+    lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
+    lineChart.data.datasets[0].pointRadius = rightData.map((_, i) => idx == null ? 3 : (i === idx ? 7 : 3));
+    lineChart.data.datasets[0].pointHoverRadius = rightData.map((_, i) => idx == null ? 4 : (i === idx ? 9 : 3));
+    lineChart.data.datasets[0].pointBackgroundColor = rightData.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
+    barChart.data.datasets[0].backgroundColor = rightData.map((_, i) => memberPalette.bg[i]);
+    barChart.data.datasets[0].borderColor = rightData.map((_, i) => memberPalette.border[i]);
+    barChart.data.datasets[0].borderWidth = rightData.map((_, i) => idx != null && i === idx ? 3.2 : 1.4);
+    if (leftTitleEl) leftTitleEl.textContent = idx != null ? (leftTitle + ' (Hover: ' + labels[idx] + ')') : leftTitle;
+    if (rightTitleEl) rightTitleEl.textContent = idx != null ? (rightTitle + ' (Hover: ' + labels[idx] + ')') : rightTitle;
+    lineChart.update('none');
+    barChart.update('none');
+    if (idx != null) {
+      const linePoint = lineChart.getDatasetMeta(0)?.data?.[idx];
+      const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
+      if (linePoint) {
+        lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        lineChart.tooltip?.setActiveElements(sourceChart === 'line' ? [{ datasetIndex: 0, index: idx }] : [], { x: linePoint.x, y: linePoint.y });
+      }
+      if (barPoint) {
+        barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        barChart.tooltip?.setActiveElements(sourceChart === 'bar' ? [{ datasetIndex: 0, index: idx }] : [], { x: barPoint.x, y: barPoint.y });
+      }
+    } else {
+      lineChart.setActiveElements([]);
+      lineChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      barChart.setActiveElements([]);
+      barChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    }
+    lineChart.draw();
+    barChart.draw();
+  };
+  const handleMembersHover = (evt, elements, sourceChart) => {
+    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.membersLine : appState.charts.membersBar, evt, elements);
+    if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
+    if (appState.membersHoverIndex === idx) return;
+    applyMembersHover(idx, sourceChart);
+  };
 
   if (document.getElementById('membersLineChart')){
     appState.charts.membersLine = new Chart(document.getElementById('membersLineChart'), {
       type:'line',
       data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}] },
-      options: commonLabelOpts
+      options: { ...commonLabelOpts, onHover: (evt, elements) => handleMembersHover(evt, elements, 'line') }
     });
   }
   if (document.getElementById('membersBarChart')){
     appState.charts.membersBar = new Chart(document.getElementById('membersBarChart'), {
       type:'bar',
       data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:1}] },
-      options: commonLabelOpts
+      options: { ...commonLabelOpts, onHover: (evt, elements) => handleMembersHover(evt, elements, 'bar') }
     });
   }
 }
@@ -1387,6 +1596,51 @@ function renderSleepingTabCharts(mode){
   const rightTitleEl = document.querySelector('#sleeping .grid-2 .card:last-child .section-title');
   if (leftTitleEl) leftTitleEl.textContent = leftTitle;
   if (rightTitleEl) rightTitleEl.textContent = rightTitle;
+  appState.sleepingHoverIndex = null;
+  const sleepingPalette = getChartPalette(rightData.length);
+  const applySleepingHover = (hoverIndex, sourceChart) => {
+    const lineChart = appState.charts.sleepingLine;
+    const barChart = appState.charts.sleepingBar;
+    if (!lineChart || !barChart) return;
+    const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
+    appState.sleepingHoverIndex = idx;
+    lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
+    lineChart.data.datasets[0].pointRadius = rightData.map((_, i) => idx == null ? 3 : (i === idx ? 7 : 3));
+    lineChart.data.datasets[0].pointHoverRadius = rightData.map((_, i) => idx == null ? 4 : (i === idx ? 9 : 3));
+    lineChart.data.datasets[0].pointBackgroundColor = rightData.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
+    barChart.data.datasets[0].backgroundColor = rightData.map((_, i) => sleepingPalette.bg[i]);
+    barChart.data.datasets[0].borderColor = rightData.map((_, i) => sleepingPalette.border[i]);
+    barChart.data.datasets[0].borderWidth = rightData.map((_, i) => idx != null && i === idx ? 3.2 : 1.4);
+    if (leftTitleEl) leftTitleEl.textContent = idx != null ? (leftTitle + ' (Hover: ' + labels[idx] + ')') : leftTitle;
+    if (rightTitleEl) rightTitleEl.textContent = idx != null ? (rightTitle + ' (Hover: ' + labels[idx] + ')') : rightTitle;
+    lineChart.update('none');
+    barChart.update('none');
+    if (idx != null) {
+      const linePoint = lineChart.getDatasetMeta(0)?.data?.[idx];
+      const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
+      if (linePoint) {
+        lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        lineChart.tooltip?.setActiveElements(sourceChart === 'line' ? [{ datasetIndex: 0, index: idx }] : [], { x: linePoint.x, y: linePoint.y });
+      }
+      if (barPoint) {
+        barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        barChart.tooltip?.setActiveElements(sourceChart === 'bar' ? [{ datasetIndex: 0, index: idx }] : [], { x: barPoint.x, y: barPoint.y });
+      }
+    } else {
+      lineChart.setActiveElements([]);
+      lineChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      barChart.setActiveElements([]);
+      barChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    }
+    lineChart.draw();
+    barChart.draw();
+  };
+  const handleSleepingHover = (evt, elements, sourceChart) => {
+    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.sleepingLine : appState.charts.sleepingBar, evt, elements);
+    if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
+    if (appState.sleepingHoverIndex === idx) return;
+    applySleepingHover(idx, sourceChart);
+  };
 
   if (document.getElementById('sleepingLineChart')){
     appState.charts.sleepingLine = new Chart(document.getElementById('sleepingLineChart'), {
@@ -1412,6 +1666,8 @@ function renderSleepingTabCharts(mode){
             font:{weight:'600',size:11},color:'#4b5563'
           }
         }
+        ,
+        onHover:(evt, elements) => handleSleepingHover(evt, elements, 'line')
       }
     });
   }
@@ -1419,7 +1675,7 @@ function renderSleepingTabCharts(mode){
     appState.charts.sleepingBar = new Chart(document.getElementById('sleepingBarChart'), {
       type:'bar',
       data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:1}] },
-      options: commonLabelOpts
+      options: { ...commonLabelOpts, onHover:(evt, elements) => handleSleepingHover(evt, elements, 'bar') }
     });
   }
 }
@@ -1462,7 +1718,7 @@ function renderAllTablesFromResults(results){
     renderTable('mappingTable', appState.results.mappings, {}, true);
   }
 }
-function onGlobalFiltersChanged(){
+function onGlobalFiltersChanged(keepDropdownOpen = false){
   const results = getActiveResults();
   if (!results) return;
 
@@ -1474,7 +1730,9 @@ function onGlobalFiltersChanged(){
   renderMembersTabCharts(appState.membersMode || 'spend');
   renderSleepingTabCharts(appState.sleepingMode || 'store');
 
-  updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
+  if (!keepDropdownOpen) {
+    updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
+  }
 }
 
 function getCurrentAnalysisConfig(){
@@ -1509,13 +1767,69 @@ function getDashboardFilteredResults(){
   if (!appState.results) return null;
   const baseRows = getDashboardFilteredBaseRows();
   const endValue = document.getElementById('dashboardEndDate')?.value || '';
-  const selectedSleepingSalesperson = normalizeText(document.getElementById('filterSalesperson')?.value || '');
+  const sleepSalesperson = selectedSleepingSalesperson();
   const endDate = endValue ? new Date(endValue + 'T23:59:59') : null;
-  const filtered = baseRows.filter(r => !selectedSleepingSalesperson || normalizeText(r.salesperson) === selectedSleepingSalesperson);
+  const filtered = baseRows.filter(r => !sleepSalesperson || normalizeText(r.salesperson) === sleepSalesperson);
   if (!filtered.length) return null;
   const cfg = getCurrentAnalysisConfig();
   appState.lastCfg = cfg;
   return analyze(filtered, { ...cfg, analysisDate: endDate || undefined });
+}
+function applyDashboardShareSelection(rows, labelKey, valueKey, leftTitleEl, baseTitle, rightTitleEl, rightBaseTitle){
+  const leftChart = appState.charts.monthly;
+  const rightChart = appState.charts.repurchase;
+  if (!leftChart) return;
+  leftChart.data.labels = rows.map(x => x[labelKey]);
+  leftChart.data.datasets[0].data = rows.map(x => x[valueKey]);
+  const palette = getChartPalette(rows.length);
+  const hoverIdx = Number.isInteger(appState.dashboardShareHoverIndex) ? appState.dashboardShareHoverIndex : null;
+  leftChart.data.datasets[0].backgroundColor = rows.map((_, i) => palette.bg[i]);
+  leftChart.data.datasets[0].borderColor = rows.map((_, i) => palette.border[i]);
+  leftChart.data.datasets[0].borderWidth = rows.map((_, i) => (hoverIdx != null && i === hoverIdx ? 3.2 : 1.6));
+  if (rightChart) {
+    rightChart.data.datasets[0].backgroundColor = rows.map((_, i) => palette.bg[i]);
+    rightChart.data.datasets[0].borderColor = rows.map((_, i) => palette.border[i]);
+    rightChart.data.datasets[0].borderWidth = rows.map((_, i) => (hoverIdx != null && i === hoverIdx ? 3.2 : 1.6));
+  }
+  if (leftTitleEl) leftTitleEl.textContent = hoverIdx != null && rows[hoverIdx] ? (baseTitle + ' (Hover: ' + rows[hoverIdx][labelKey] + ')') : baseTitle;
+  if (rightTitleEl) rightTitleEl.textContent = hoverIdx != null && rows[hoverIdx] ? (rightBaseTitle + ' (Hover: ' + rows[hoverIdx][labelKey] + ')') : rightBaseTitle;
+
+  leftChart.update('none');
+  if (rightChart) rightChart.update('none');
+  if (hoverIdx != null) {
+    const leftPoint = leftChart.getDatasetMeta(0)?.data?.[hoverIdx];
+    const rightPoint = rightChart?.getDatasetMeta(0)?.data?.[hoverIdx];
+    if (leftPoint) {
+      leftChart.setActiveElements([{ datasetIndex: 0, index: hoverIdx }]);
+      if (appState.dashboardShareHoverSource === 'left') leftChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: hoverIdx }], { x: leftPoint.x, y: leftPoint.y });
+      else leftChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    }
+    if (rightChart && rightPoint) {
+      rightChart.setActiveElements([{ datasetIndex: 0, index: hoverIdx }]);
+      if (appState.dashboardShareHoverSource === 'right') rightChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: hoverIdx }], { x: rightPoint.x, y: rightPoint.y });
+      else rightChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    }
+  } else {
+    leftChart.setActiveElements([]);
+    leftChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    if (rightChart) {
+      rightChart.setActiveElements([]);
+      rightChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    }
+  }
+  leftChart.draw();
+  if (rightChart) rightChart.draw();
+
+  const mode = appState.dashboardShareSelection?.mode;
+  const miniConfig = {
+    stores: { elId:'topStores', keyField:'store', valueField:'performance' },
+    salespeople: { elId:'topSalespeople', keyField:'salesperson', valueField:'performance' },
+    products: { elId:'topProducts', keyField:'product', valueField:'sales_amount' }
+  }[mode];
+  if (miniConfig) {
+    const pickedRows = hoverIdx != null && rows[hoverIdx] ? [rows[hoverIdx]] : rows;
+    renderMiniList(miniConfig.elId, pickedRows, miniConfig.keyField, miniConfig.valueField, fmtCurrency);
+  }
 }
 
 function updateDashboardCharts(mode){
@@ -1528,6 +1842,7 @@ function updateDashboardCharts(mode){
   const rightTitle = document.querySelector('#dashboard .grid-2 .card:last-child .section-title');
 
   if (!mode || mode === 'default'){
+    appState.dashboardShareSelection = { mode: 'default', index: null };
     leftTitle.textContent = 'Monthly Sales Trend';
     rightTitle.textContent = 'Repurchase Structure';
 
@@ -1602,41 +1917,60 @@ function updateDashboardCharts(mode){
   let rows = [];
   let labelKey = '';
   let valueKey = '';
+  let leftBaseTitle = '';
+  let rightBaseTitle = '';
   let leftChartType = 'bar';
   let rightChartType = 'doughnut';
 
   if (mode === 'stores'){
-    leftTitle.textContent = 'Top 10 Stores Performance';
-    rightTitle.textContent = 'Top 10 Stores Share';
+    leftBaseTitle = 'Top 10 Stores Performance';
+    leftTitle.textContent = leftBaseTitle;
+    rightBaseTitle = 'Top 10 Stores Share';
+    rightTitle.textContent = rightBaseTitle;
     rows = results.storeRank.slice(0, 10);
     labelKey = 'store';
     valueKey = 'performance';
     setDownloadTarget('top_stores.xlsx', [{ name:'Top Stores', rows: results.storeRank || [] }]);
     setActiveGlow('#topStoresCard');
   } else if (mode === 'salespeople'){
-    leftTitle.textContent = 'Top 10 Salespeople Performance';
-    rightTitle.textContent = 'Top 10 Salespeople Share';
+    leftBaseTitle = 'Top 10 Salespeople Performance';
+    leftTitle.textContent = leftBaseTitle;
+    rightBaseTitle = 'Top 10 Salespeople Share';
+    rightTitle.textContent = rightBaseTitle;
     rows = results.salespersonRank.slice(0, 10);
     labelKey = 'salesperson';
     valueKey = 'performance';
     setDownloadTarget('top_salespeople.xlsx', [{ name:'Top Salespeople', rows: results.salespersonRank || [] }]);
     setActiveGlow('#topSalespeopleCard');
   } else if (mode === 'products'){
-    leftTitle.textContent = 'Top 10 Products Sales';
-    rightTitle.textContent = 'Top 10 Product Share';
+    leftBaseTitle = 'Top 10 Products Sales';
+    leftTitle.textContent = leftBaseTitle;
+    rightBaseTitle = 'Top 10 Product Share';
+    rightTitle.textContent = rightBaseTitle;
     rows = results.productRank.slice(0, 10);
     labelKey = 'product';
     valueKey = 'sales_amount';
     setDownloadTarget('top_products.xlsx', [{ name:'Top Products', rows: results.productRank || [] }]);
     setActiveGlow('#topProductsCard');
   }
+  if (appState.dashboardShareSelection.mode !== mode) appState.dashboardShareSelection = { mode, index: null };
+  appState.dashboardShareHoverIndex = null;
+  appState.dashboardShareHoverSource = '';
 
   appState.charts.monthly = new Chart(document.getElementById('monthlyChart'), {
     type:leftChartType,
-    data:{ labels:rows.map(x=>x[labelKey]), datasets:[{label:'Amount', data:rows.map(x=>x[valueKey]), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rows.length).bg, borderColor:getChartPalette(rows.length).border, borderWidth:1}] },
+    data:{ labels:rows.map(x=>x[labelKey]), datasets:[{label:'Amount', data:rows.map(x=>x[valueKey]), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rows.length).bg, borderColor:'rgba(17,24,39,0.92)', borderWidth:1.6}] },
     options:{
       responsive:true,
       maintainAspectRatio:false,
+      onHover:(evt, elements) => {
+        const idx = resolveHoverIndexFromEvent(appState.charts.monthly, evt, elements);
+        if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
+        if (appState.dashboardShareHoverIndex === idx && appState.dashboardShareHoverSource === 'left') return;
+        appState.dashboardShareHoverIndex = idx;
+        appState.dashboardShareHoverSource = 'left';
+        applyDashboardShareSelection(rows, labelKey, valueKey, leftTitle, leftBaseTitle, rightTitle, rightBaseTitle);
+      },
       plugins:{
         datalabels:{
           anchor:'end',
@@ -1656,6 +1990,14 @@ function updateDashboardCharts(mode){
       responsive:true,
       maintainAspectRatio:false,
       layout:{padding:{top:12,right:12,bottom:12,left:12}},
+      onHover:(evt, elements) => {
+        const idx = resolveHoverIndexFromEvent(appState.charts.repurchase, evt, elements);
+        evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
+        if (appState.dashboardShareHoverIndex === idx && appState.dashboardShareHoverSource === 'right') return;
+        appState.dashboardShareHoverIndex = idx;
+        appState.dashboardShareHoverSource = 'right';
+        applyDashboardShareSelection(rows, labelKey, valueKey, leftTitle, leftBaseTitle, rightTitle, rightBaseTitle);
+      },
       plugins:{
         legend:{
           display:true,
@@ -1704,6 +2046,7 @@ function updateDashboardCharts(mode){
       animation:false
     }
   });
+  applyDashboardShareSelection(rows, labelKey, valueKey, leftTitle, leftBaseTitle, rightTitle, rightBaseTitle);
 }
 
 function renderCharts(results){
@@ -1756,7 +2099,7 @@ function renderResults(results, mappings){
   renderTable('mappingTable', mappings || [], {}, true);
 
   // render everything from current filters
-  onGlobalFiltersChanged();
+      onGlobalFiltersChanged(true);
   updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
 
   setDownloadTarget('dashboard_results.xlsx', [
@@ -1925,7 +2268,7 @@ document.getElementById('dashboardEndDate')?.addEventListener('change', updateDa
 document.getElementById('dashboardStoreSearch')?.addEventListener('input', populateDashboardStoreOptions);
 document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
 document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
-document.getElementById('filterSalesperson')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('sleepSalespersonSearch')?.addEventListener('input', populateSleepingSalespersonOptions);
 document.getElementById('sleepDays')?.addEventListener('input', onGlobalFiltersChanged);
 document.getElementById('sleepMinOrders')?.addEventListener('input', onGlobalFiltersChanged);
 document.getElementById('aclassMinAmount')?.addEventListener('input', onGlobalFiltersChanged);
@@ -2051,7 +2394,10 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     setAnalyzeLoading(false);
   }
 });
-document.getElementById('filterSalesperson')?.addEventListener('change', onGlobalFiltersChanged);
+document.getElementById('sleepSalespersonTrigger')?.addEventListener('click', () => toggleDropdown('sleepSalespersonMenu'));
+document.getElementById('clearSleepSalespersonBtn')?.addEventListener('click', () => {
+  toggleDropdown('sleepSalespersonMenu', false);
+});
 document.getElementById('sleepDays')?.addEventListener('change', onGlobalFiltersChanged);
 document.getElementById('sleepMinOrders')?.addEventListener('change', onGlobalFiltersChanged);
 document.getElementById('aclassMinAmount')?.addEventListener('change', onGlobalFiltersChanged);
@@ -2059,19 +2405,10 @@ document.getElementById('aclassMinAmount')?.addEventListener('change', onGlobalF
 document.getElementById('dashboardDateTrigger')?.addEventListener('click', () => toggleDropdown('dashboardDateMenu'));
 
 document.getElementById('clearStoreBtn')?.addEventListener('click', () => {
-  document.getElementById('dashboardStoreSearch').value = '';
-  appState.selectedStores.clear();
-  populateDashboardStoreOptions();
-  populateDashboardSalespersonOptions();
-  populateSleepingSalespersonOptions();
-  onGlobalFiltersChanged();
+  toggleDropdown('dashboardStoreMenu', false);
 });
 document.getElementById('clearSalespeopleBtn')?.addEventListener('click', () => {
-  document.getElementById('dashboardSalespersonSearch').value = '';
-  appState.selectedSalespeople.clear();
-  populateDashboardSalespersonOptions();
-  populateSleepingSalespersonOptions();
-  onGlobalFiltersChanged();
+  toggleDropdown('dashboardSalespersonMenu', false);
 });
 document.getElementById('dashboardStoreTrigger')?.addEventListener('click', () => toggleDropdown('dashboardStoreMenu'));
 document.getElementById('dashboardSalespersonTrigger')?.addEventListener('click', () => toggleDropdown('dashboardSalespersonMenu'));
