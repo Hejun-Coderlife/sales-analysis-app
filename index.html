@@ -158,8 +158,10 @@ input[type="date"], select.control-select{
     .sleep-card .table-wrap{width:100%;height:240px;max-height:240px;overflow:auto}
     #sleepListTable{width:100%;height:240px;max-height:240px;overflow:auto;display:block;white-space:nowrap}
     #sleepByStoreTable{width:100%;height:240px;max-height:240px;overflow-y:auto;overflow-x:hidden;display:block;white-space:normal}
+    #memberRankTable{width:100%;height:240px;max-height:240px;overflow:auto;display:block;white-space:nowrap}
     #sleepListTable table{min-width:1600px}
     #sleepByStoreTable table{width:100%;min-width:0}
+    #memberRankTable table{min-width:1600px}
     .card{background:white;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0, 0, 0, 0.2), 0 0 40px rgba(120, 80, 255, 0.15)}
     .kpi{padding:14px 16px}
     .kpi .label{font-size:13px;color:#111827}
@@ -617,7 +619,84 @@ const hoverGuidePlugin = {
     ctx.restore();
   }
 };
+
+const barHoverMotionPlugin = {
+  id: 'barHoverMotion',
+  beforeDatasetsDraw(chart) {
+    const active = (chart.getActiveElements() || []).filter(e => {
+      const meta = chart.getDatasetMeta(e.datasetIndex);
+      return meta && meta.type === 'bar';
+    });
+    if (!active.length) return;
+    const t = Date.now() / 190;
+    const lift = 5 + Math.sin(t) * 4.5;
+    for (const el of active) {
+      const meta = chart.getDatasetMeta(el.datasetIndex);
+      const bar = meta.data[el.index];
+      if (!bar || bar.horizontal) continue;
+      if (!bar._barMotionOrig) {
+        bar._barMotionOrig = { y: bar.y };
+      }
+      bar.y = bar._barMotionOrig.y - lift;
+    }
+    if (!chart._barMotionRaf) {
+      chart._barMotionRaf = requestAnimationFrame(() => {
+        chart._barMotionRaf = 0;
+        if (chart.destroyed) return;
+        const still = (chart.getActiveElements() || []).some(e => {
+          const meta = chart.getDatasetMeta(e.datasetIndex);
+          return meta && meta.type === 'bar';
+        });
+        if (still) chart.draw();
+      });
+    }
+  },
+  afterDatasetsDraw(chart) {
+    chart.data.datasets.forEach((_, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (!meta || meta.type !== 'bar' || !meta.data) return;
+      meta.data.forEach(bar => {
+        if (bar && bar._barMotionOrig) {
+          bar.y = bar._barMotionOrig.y;
+          delete bar._barMotionOrig;
+        }
+      });
+    });
+  },
+  destroy(chart) {
+    if (chart._barMotionRaf) {
+      cancelAnimationFrame(chart._barMotionRaf);
+      chart._barMotionRaf = 0;
+    }
+  }
+};
+
+const doughnutHoverShadowPlugin = {
+  id: 'doughnutHoverShadow',
+  afterDatasetsDraw(chart) {
+    if (chart.config.type !== 'doughnut' && chart.config.type !== 'pie') return;
+    const active = chart.getActiveElements();
+    if (!active.length) return;
+    const { ctx } = chart;
+    for (const { datasetIndex, index } of active) {
+      const arc = chart.getDatasetMeta(datasetIndex)?.data?.[index];
+      if (!arc) continue;
+      ctx.save();
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.38)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 7;
+      arc.draw(ctx);
+      ctx.restore();
+    }
+  }
+};
+
 Chart.register(hoverGuidePlugin);
+Chart.register(barHoverMotionPlugin);
+Chart.register(doughnutHoverShadowPlugin);
+Chart.defaults.elements.bar.borderWidth = 0;
+Chart.defaults.elements.bar.hoverBorderWidth = 0;
 
 let appState = {
   results: null,
@@ -919,14 +998,14 @@ function renderTable(containerId, rows, formatters = {}, addIndex = false){
   html += '</tbody></table>';
   el.innerHTML = html;
 }
-function renderMiniList(elId, rows, keyField, valueField, formatter){
+function renderMiniList(elId, rows, keyField, valueField, formatter, rankBase = 0){
   const el = document.getElementById(elId);
   if (!rows.length){ el.innerHTML = '<p class="small">No data.</p>'; return; }
   const rowStyle = 'display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)';
   const nameStyle = 'margin-left:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
   const listHtml = rows.map((r,i) =>
     '<div style="' + rowStyle + '">' +
-    '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1"><span class="pill">#' + (i+1) + '</span><span style="' + nameStyle + '" title="' + String(r[keyField] ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '">' + r[keyField] + '</span></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1"><span class="pill">#' + (rankBase + i + 1) + '</span><span style="' + nameStyle + '" title="' + String(r[keyField] ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '">' + r[keyField] + '</span></div>' +
     '<div style="font-weight:700;flex-shrink:0">' + formatter(r[valueField]) + '</div></div>'
   ).join('');
   el.innerHTML = listHtml;
@@ -968,6 +1047,22 @@ function getChartPalette(n){
   };
 }
 
+function hoverBrightenRgba(s){
+  const m = String(s || '').match(/rgba?\(\s*([^)]+)\s*\)/i);
+  if (!m) return s;
+  const parts = m[1].split(',').map(x => String(x).trim());
+  if (parts.length < 3) return s;
+  const r = Math.min(255, Math.round(Number(parts[0]) * 1.1));
+  const g = Math.min(255, Math.round(Number(parts[1]) * 1.1));
+  const b = Math.min(255, Math.round(Number(parts[2]) * 1.1));
+  const a = parts.length >= 4 && parts[3] !== undefined
+    ? Math.min(1, Number(parts[3]) + 0.14)
+    : 1;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+function hoverBackgroundColorsFrom(bgArr){
+  return bgArr.map(hoverBrightenRgba);
+}
 
 function setDownloadTarget(filename, sheets){
   appState.downloadTarget = { filename, sheets };
@@ -1326,6 +1421,9 @@ function renderRankingTabCharts(mode){
     product: { elId:'rankingsProductMini', keyField:'product', valueField:'sales_amount' },
     ticket: { elId:'rankingsTicketMini', keyField:'salesperson', valueField:'avg_ticket' }
   }[mode || 'store'];
+  if (miniConfig) {
+    renderMiniList(miniConfig.elId, rows, miniConfig.keyField, miniConfig.valueField, fmtCurrency, 0);
+  }
   const basePalette = getChartPalette(values.length);
   const applyRankingHover = (hoverIndex, sourceChart) => {
     appState.rankingsHoverIndex = hoverIndex;
@@ -1341,12 +1439,12 @@ function renderRankingTabCharts(mode){
     lineChart.data.datasets[0].pointBorderWidth = values.map((_, i) => idx != null && i === idx ? 3 : 1);
     barChart.data.datasets[0].backgroundColor = values.map((_, i) => basePalette.bg[i]);
     barChart.data.datasets[0].borderColor = values.map((_, i) => basePalette.border[i]);
-    barChart.data.datasets[0].borderWidth = values.map((_, i) => idx != null && i === idx ? 3.2 : 1.4);
+    barChart.data.datasets[0].borderWidth = 0;
     if (leftTitle) leftTitle.textContent = idx != null ? (title1 + ' (Hover: ' + labels[idx] + ')') : title1;
     if (rightTitle) rightTitle.textContent = idx != null ? (title2 + ' (Hover: ' + labels[idx] + ')') : title2;
     if (miniConfig) {
       const miniRows = idx != null && rows[idx] ? [rows[idx]] : rows;
-      renderMiniList(miniConfig.elId, miniRows, miniConfig.keyField, miniConfig.valueField, fmtCurrency);
+      renderMiniList(miniConfig.elId, miniRows, miniConfig.keyField, miniConfig.valueField, fmtCurrency, idx != null ? idx : 0);
     }
     lineChart.update('none');
     barChart.update('none');
@@ -1398,10 +1496,20 @@ function renderRankingTabCharts(mode){
     type:'bar',
     data:{
       labels: labels,
-      datasets:[{label:title2, data: values, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(values.length).bg, borderColor:getChartPalette(values.length).border, borderWidth:1}]
+      datasets:[{label:title2, data: values, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(values.length).bg, borderColor:getChartPalette(values.length).border, borderWidth:0}]
     },
     options: { ...commonLabelOpts, onHover: (evt, elements) => handleHover(evt, elements, 'bar') }
   });
+  const clearRankingHover = (sourceChart) => {
+    if (appState.rankingsHoverIndex == null) return;
+    applyRankingHover(null, sourceChart);
+  };
+  if (appState.charts.rankingsLine?.canvas) {
+    appState.charts.rankingsLine.canvas.onmouseleave = () => clearRankingHover('line');
+  }
+  if (appState.charts.rankingsBar?.canvas) {
+    appState.charts.rankingsBar.canvas.onmouseleave = () => clearRankingHover('bar');
+  }
 }
 
 function renderMembersTabCharts(mode){
@@ -1433,11 +1541,12 @@ function renderMembersTabCharts(mode){
   if (appState.charts.membersLine) appState.charts.membersLine.destroy();
   if (appState.charts.membersBar) appState.charts.membersBar.destroy();
 
-  const rows = results.memberRank.slice(0,10);
-  const labels = rows.map(x => x.member_name || x.member_key);
-  const spendVals = rows.map(x => x.total_spend);
-  const ticketVals = rows.map(x => x.avg_ticket);
-  const repurchaseVals = rows.map(x => x.repurchase_times);
+  const memberRankFullForTable = results.memberRank || [];
+  const chartRowsForHover = memberRankFullForTable.slice(0,10);
+  const labels = chartRowsForHover.map(x => x.member_name || x.member_key);
+  const spendVals = chartRowsForHover.map(x => x.total_spend);
+  const ticketVals = chartRowsForHover.map(x => x.avg_ticket);
+  const repurchaseVals = chartRowsForHover.map(x => x.repurchase_times);
 
   setDownloadTarget('member_spend_ranking.xlsx', [{ name:'Member Spend Ranking', rows: results.memberRank || [] }]);
   setActiveGlow('#memberRankingCard');
@@ -1483,7 +1592,7 @@ function renderMembersTabCharts(mode){
     lineChart.data.datasets[0].pointBackgroundColor = rightData.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
     barChart.data.datasets[0].backgroundColor = rightData.map((_, i) => memberPalette.bg[i]);
     barChart.data.datasets[0].borderColor = rightData.map((_, i) => memberPalette.border[i]);
-    barChart.data.datasets[0].borderWidth = rightData.map((_, i) => idx != null && i === idx ? 3.2 : 1.4);
+    barChart.data.datasets[0].borderWidth = 0;
     if (leftTitleEl) leftTitleEl.textContent = idx != null ? (leftTitle + ' (Hover: ' + labels[idx] + ')') : leftTitle;
     if (rightTitleEl) rightTitleEl.textContent = idx != null ? (rightTitle + ' (Hover: ' + labels[idx] + ')') : rightTitle;
     lineChart.update('none');
@@ -1507,9 +1616,14 @@ function renderMembersTabCharts(mode){
     }
     lineChart.draw();
     barChart.draw();
+    const memberFmt = {total_spend:fmtCurrency, order_count:fmtInt, last_purchase_date:v=>v?ymd(v):'', avg_ticket:fmtCurrency, repurchase_times:fmtInt};
+    const memberTableRows = (idx != null && chartRowsForHover[idx] != null) ? [chartRowsForHover[idx]] : memberRankFullForTable;
+    renderTable('memberRankTable', memberTableRows, memberFmt, true);
   };
   const handleMembersHover = (evt, elements, sourceChart) => {
-    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.membersLine : appState.charts.membersBar, evt, elements);
+    const idx = sourceChart === 'bar' && (!elements || !elements.length)
+      ? null
+      : resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.membersLine : appState.charts.membersBar, evt, elements);
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.membersHoverIndex === idx) return;
     applyMembersHover(idx, sourceChart);
@@ -1525,10 +1639,21 @@ function renderMembersTabCharts(mode){
   if (document.getElementById('membersBarChart')){
     appState.charts.membersBar = new Chart(document.getElementById('membersBarChart'), {
       type:'bar',
-      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:1}] },
+      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:0}] },
       options: { ...commonLabelOpts, onHover: (evt, elements) => handleMembersHover(evt, elements, 'bar') }
     });
   }
+  const clearMembersHover = (sourceChart) => {
+    if (appState.membersHoverIndex == null) return;
+    applyMembersHover(null, sourceChart);
+  };
+  if (appState.charts.membersLine?.canvas) {
+    appState.charts.membersLine.canvas.onmouseleave = () => clearMembersHover('line');
+  }
+  if (appState.charts.membersBar?.canvas) {
+    appState.charts.membersBar.canvas.onmouseleave = () => clearMembersHover('bar');
+  }
+  renderTable('memberRankTable', memberRankFullForTable, {total_spend:fmtCurrency, order_count:fmtInt, last_purchase_date:v=>v?ymd(v):'', avg_ticket:fmtCurrency, repurchase_times:fmtInt}, true);
 }
 
 function renderSleepingTabCharts(mode){
@@ -1567,14 +1692,18 @@ function renderSleepingTabCharts(mode){
   let rightLabel = '';
   let leftTitle = '';
   let rightTitle = '';
+  let listFullForTable = [];
+  let storeFullForTable = [];
+  let chartRowsForHover = [];
 
   if (!mode || mode === 'store'){
     setDownloadTarget('sleeping_members_by_store.xlsx', [{ name:'Sleeping Members by Store', rows: results.sleepByStore || [] }]);
     setActiveGlow('#sleepByStoreCard');
-    const rows = results.sleepByStore.slice(0,10);
-    labels = rows.map(x=>x.last_store);
-    leftData = rows.map(x=>x.sleeping_members);
-    rightData = rows.map(x=>x.historical_spend);
+    storeFullForTable = results.sleepByStore || [];
+    chartRowsForHover = storeFullForTable.slice(0,10);
+    labels = chartRowsForHover.map(x=>x.last_store);
+    leftData = chartRowsForHover.map(x=>x.sleeping_members);
+    rightData = chartRowsForHover.map(x=>x.historical_spend);
     leftLabel = 'Sleeping Members';
     rightLabel = 'Historical Spend';
     leftTitle = 'Sleeping Members by Store';
@@ -1582,10 +1711,11 @@ function renderSleepingTabCharts(mode){
   } else if (mode === 'list'){
     setDownloadTarget('sleeping_member_wake_up_list.xlsx', [{ name:'Sleeping Member Wake-up List', rows: getFilteredSleepList() || results.sleepList || [] }]);
     setActiveGlow('#sleepWakeListCard');
-    const rows = (getFilteredSleepList(results) || []).slice(0,10);
-    labels = rows.map(x=>x.member_name || x.member_key);
-    leftData = rows.map(x=>x.total_spend);
-    rightData = rows.map(x=>x.sleep_days);
+    listFullForTable = getFilteredSleepList(results) || [];
+    chartRowsForHover = listFullForTable.slice(0,10);
+    labels = chartRowsForHover.map(x=>x.member_name || x.member_key);
+    leftData = chartRowsForHover.map(x=>x.total_spend);
+    rightData = chartRowsForHover.map(x=>x.sleep_days);
     leftLabel = 'Sleeping Member Spend';
     rightLabel = 'Sleep Days';
     leftTitle = 'Sleeping Member Wake-up List';
@@ -1610,7 +1740,7 @@ function renderSleepingTabCharts(mode){
     lineChart.data.datasets[0].pointBackgroundColor = rightData.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
     barChart.data.datasets[0].backgroundColor = rightData.map((_, i) => sleepingPalette.bg[i]);
     barChart.data.datasets[0].borderColor = rightData.map((_, i) => sleepingPalette.border[i]);
-    barChart.data.datasets[0].borderWidth = rightData.map((_, i) => idx != null && i === idx ? 3.2 : 1.4);
+    barChart.data.datasets[0].borderWidth = 0;
     if (leftTitleEl) leftTitleEl.textContent = idx != null ? (leftTitle + ' (Hover: ' + labels[idx] + ')') : leftTitle;
     if (rightTitleEl) rightTitleEl.textContent = idx != null ? (rightTitle + ' (Hover: ' + labels[idx] + ')') : rightTitle;
     lineChart.update('none');
@@ -1634,9 +1764,20 @@ function renderSleepingTabCharts(mode){
     }
     lineChart.draw();
     barChart.draw();
+    if (mode === 'list') {
+      const sleepFmt = {total_spend:fmtCurrency, order_count:fmtInt, avg_ticket:fmtCurrency, repurchase_times:fmtInt, sleep_days:fmtInt};
+      const tableRows = (idx != null && chartRowsForHover[idx] != null) ? [chartRowsForHover[idx]] : listFullForTable;
+      renderTable('sleepListTable', tableRows, sleepFmt, true);
+    } else if (!mode || mode === 'store') {
+      const storeFmt = {sleeping_members:fmtInt, historical_spend:fmtCurrency};
+      const storeTableRows = (idx != null && chartRowsForHover[idx] != null) ? [chartRowsForHover[idx]] : storeFullForTable;
+      renderTable('sleepByStoreTable', storeTableRows, storeFmt, true);
+    }
   };
   const handleSleepingHover = (evt, elements, sourceChart) => {
-    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.sleepingLine : appState.charts.sleepingBar, evt, elements);
+    const idx = sourceChart === 'bar' && (!elements || !elements.length)
+      ? null
+      : resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.sleepingLine : appState.charts.sleepingBar, evt, elements);
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.sleepingHoverIndex === idx) return;
     applySleepingHover(idx, sourceChart);
@@ -1674,10 +1815,22 @@ function renderSleepingTabCharts(mode){
   if (document.getElementById('sleepingBarChart')){
     appState.charts.sleepingBar = new Chart(document.getElementById('sleepingBarChart'), {
       type:'bar',
-      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:1}] },
+      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:0}] },
       options: { ...commonLabelOpts, onHover:(evt, elements) => handleSleepingHover(evt, elements, 'bar') }
     });
   }
+  const clearSleepingHover = (sourceChart) => {
+    if (appState.sleepingHoverIndex == null) return;
+    applySleepingHover(null, sourceChart);
+  };
+  if (appState.charts.sleepingLine?.canvas) {
+    appState.charts.sleepingLine.canvas.onmouseleave = () => clearSleepingHover('line');
+  }
+  if (appState.charts.sleepingBar?.canvas) {
+    appState.charts.sleepingBar.canvas.onmouseleave = () => clearSleepingHover('bar');
+  }
+  renderTable('sleepByStoreTable', results.sleepByStore || [], {sleeping_members:fmtInt, historical_spend:fmtCurrency}, true);
+  refreshSleepingTable(results);
 }
 
 function renderExtraTabCharts(results){
@@ -1785,11 +1938,15 @@ function applyDashboardShareSelection(rows, labelKey, valueKey, leftTitleEl, bas
   const hoverIdx = Number.isInteger(appState.dashboardShareHoverIndex) ? appState.dashboardShareHoverIndex : null;
   leftChart.data.datasets[0].backgroundColor = rows.map((_, i) => palette.bg[i]);
   leftChart.data.datasets[0].borderColor = rows.map((_, i) => palette.border[i]);
-  leftChart.data.datasets[0].borderWidth = rows.map((_, i) => (hoverIdx != null && i === hoverIdx ? 3.2 : 1.6));
+  leftChart.data.datasets[0].borderWidth = 0;
   if (rightChart) {
     rightChart.data.datasets[0].backgroundColor = rows.map((_, i) => palette.bg[i]);
     rightChart.data.datasets[0].borderColor = rows.map((_, i) => palette.border[i]);
-    rightChart.data.datasets[0].borderWidth = rows.map((_, i) => (hoverIdx != null && i === hoverIdx ? 3.2 : 1.6));
+    rightChart.data.datasets[0].borderWidth = 0;
+    if (rightChart.config.type === 'doughnut') {
+      rightChart.data.datasets[0].hoverOffset = 12;
+      rightChart.data.datasets[0].hoverBackgroundColor = hoverBackgroundColorsFrom(rows.map((_, i) => palette.bg[i]));
+    }
   }
   if (leftTitleEl) leftTitleEl.textContent = hoverIdx != null && rows[hoverIdx] ? (baseTitle + ' (Hover: ' + rows[hoverIdx][labelKey] + ')') : baseTitle;
   if (rightTitleEl) rightTitleEl.textContent = hoverIdx != null && rows[hoverIdx] ? (rightBaseTitle + ' (Hover: ' + rows[hoverIdx][labelKey] + ')') : rightBaseTitle;
@@ -1828,7 +1985,7 @@ function applyDashboardShareSelection(rows, labelKey, valueKey, leftTitleEl, bas
   }[mode];
   if (miniConfig) {
     const pickedRows = hoverIdx != null && rows[hoverIdx] ? [rows[hoverIdx]] : rows;
-    renderMiniList(miniConfig.elId, pickedRows, miniConfig.keyField, miniConfig.valueField, fmtCurrency);
+    renderMiniList(miniConfig.elId, pickedRows, miniConfig.keyField, miniConfig.valueField, fmtCurrency, hoverIdx != null ? hoverIdx : 0);
   }
 }
 
@@ -1897,7 +2054,7 @@ function updateDashboardCharts(mode){
     clearActiveGlows();
     appState.charts.repurchase = new Chart(document.getElementById('repurchaseChart'), {
       type:'bar',
-      data:{ labels:results.repurchaseDistribution.map(x=>x.order_bucket), datasets:[{label:'Members', data:results.repurchaseDistribution.map(x=>x.member_count), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(results.repurchaseDistribution.length).bg, borderColor:getChartPalette(results.repurchaseDistribution.length).border, borderWidth:1}] },
+      data:{ labels:results.repurchaseDistribution.map(x=>x.order_bucket), datasets:[{label:'Members', data:results.repurchaseDistribution.map(x=>x.member_count), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(results.repurchaseDistribution.length).bg, borderColor:getChartPalette(results.repurchaseDistribution.length).border, borderWidth:0}] },
       options:{
         responsive:true,
         maintainAspectRatio:false,
@@ -1959,7 +2116,7 @@ function updateDashboardCharts(mode){
 
   appState.charts.monthly = new Chart(document.getElementById('monthlyChart'), {
     type:leftChartType,
-    data:{ labels:rows.map(x=>x[labelKey]), datasets:[{label:'Amount', data:rows.map(x=>x[valueKey]), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rows.length).bg, borderColor:'rgba(17,24,39,0.92)', borderWidth:1.6}] },
+    data:{ labels:rows.map(x=>x[labelKey]), datasets:[{label:'Amount', data:rows.map(x=>x[valueKey]), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rows.length).bg, borderColor:'rgba(17,24,39,0.92)', borderWidth:0}] },
     options:{
       responsive:true,
       maintainAspectRatio:false,
@@ -1985,7 +2142,7 @@ function updateDashboardCharts(mode){
   const dashboardPalette = getChartPalette(rows.length);
   appState.charts.repurchase = new Chart(document.getElementById('repurchaseChart'), {
     type:rightChartType,
-    data:{ labels:rows.map(x=>x[labelKey]), datasets:[{label:'Amount', data:rows.map(x=>x[valueKey]), borderRadius: rightChartType === 'doughnut' ? 2 : {topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', spacing: rightChartType === 'doughnut' ? 0 : 0, hoverOffset: rightChartType === 'doughnut' ? 0 : undefined, cutout: rightChartType === 'doughnut' ? '52%' : undefined, maxBarThickness:40, clip:0, backgroundColor: rightChartType === 'doughnut' ? dashboardPalette.bg : 'rgba(96, 165, 250, 0.55)', borderColor: rightChartType === 'doughnut' ? dashboardPalette.border : 'rgba(96, 165, 250, 0.9)', borderWidth: rightChartType === 'doughnut' ? 1 : 1}] },
+    data:{ labels:rows.map(x=>x[labelKey]), datasets:[{label:'Amount', data:rows.map(x=>x[valueKey]), borderRadius: rightChartType === 'doughnut' ? 2 : {topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', spacing: rightChartType === 'doughnut' ? 0 : 0, hoverOffset: rightChartType === 'doughnut' ? 12 : undefined, hoverBackgroundColor: rightChartType === 'doughnut' ? hoverBackgroundColorsFrom(dashboardPalette.bg) : undefined, cutout: rightChartType === 'doughnut' ? '52%' : undefined, maxBarThickness:40, clip:0, backgroundColor: rightChartType === 'doughnut' ? dashboardPalette.bg : 'rgba(96, 165, 250, 0.55)', borderColor: rightChartType === 'doughnut' ? dashboardPalette.border : 'rgba(96, 165, 250, 0.9)', borderWidth: 0}] },
     options:{
       responsive:true,
       maintainAspectRatio:false,
@@ -2040,7 +2197,9 @@ function updateDashboardCharts(mode){
       },
       elements:{
         arc:{
-          borderJoinStyle:'round'
+          borderJoinStyle:'round',
+          borderWidth: 0,
+          hoverBorderWidth: 0
         }
       },
       animation:false
