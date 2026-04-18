@@ -1621,9 +1621,7 @@ function renderMembersTabCharts(mode){
     renderTable('memberRankTable', memberTableRows, memberFmt, true);
   };
   const handleMembersHover = (evt, elements, sourceChart) => {
-    const idx = sourceChart === 'bar' && (!elements || !elements.length)
-      ? null
-      : resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.membersLine : appState.charts.membersBar, evt, elements);
+    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.membersLine : appState.charts.membersBar, evt, elements);
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.membersHoverIndex === idx) return;
     applyMembersHover(idx, sourceChart);
@@ -1633,14 +1631,14 @@ function renderMembersTabCharts(mode){
     appState.charts.membersLine = new Chart(document.getElementById('membersLineChart'), {
       type:'line',
       data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}] },
-      options: { ...commonLabelOpts, onHover: (evt, elements) => handleMembersHover(evt, elements, 'line') }
+      options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleMembersHover(evt, elements, 'line') }
     });
   }
   if (document.getElementById('membersBarChart')){
     appState.charts.membersBar = new Chart(document.getElementById('membersBarChart'), {
       type:'bar',
       data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:0}] },
-      options: { ...commonLabelOpts, onHover: (evt, elements) => handleMembersHover(evt, elements, 'bar') }
+      options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleMembersHover(evt, elements, 'bar') }
     });
   }
   const clearMembersHover = (sourceChart) => {
