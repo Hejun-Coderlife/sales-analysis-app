@@ -604,10 +604,40 @@ const hoverGuidePlugin = {
   id: 'hoverGuidePlugin',
   afterDatasetsDraw(chart) {
     if (!['line', 'bar'].includes(chart.config?.type)) return;
-    const active = chart.getActiveElements ? chart.getActiveElements() : (chart.tooltip && chart.tooltip.getActiveElements ? chart.tooltip.getActiveElements() : []);
+    const canvasId = chart.canvas?.id || '';
+    const syncedHoverIndex = canvasId.startsWith('rankings')
+      ? appState.rankingsHoverIndex
+      : canvasId.startsWith('members')
+        ? appState.membersHoverIndex
+        : canvasId.startsWith('sleeping')
+          ? appState.sleepingHoverIndex
+          : null;
+    if (Number.isInteger(syncedHoverIndex)) {
+      const metaPoint = chart.getDatasetMeta(0)?.data?.[syncedHoverIndex];
+      const x = metaPoint?.x;
+      if (Number.isFinite(x)) {
+        const {ctx, chartArea:{top,bottom}} = chart;
+        ctx.save();
+        ctx.setLineDash([6,6]);
+        ctx.strokeStyle = 'rgba(75, 85, 99, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
+    }
+    const directActive = chart.getActiveElements ? (chart.getActiveElements() || []) : [];
+    const tooltipActive = (chart.tooltip && chart.tooltip.getActiveElements) ? (chart.tooltip.getActiveElements() || []) : [];
+    const active = directActive.length ? directActive : tooltipActive;
     if (!active || !active.length) return;
     const {ctx, chartArea:{top,bottom}} = chart;
-    const x = active[0].element.x;
+    const first = active[0];
+    const pointEl = first?.element || chart.getDatasetMeta(first?.datasetIndex || 0)?.data?.[first?.index || 0];
+    const x = pointEl?.x;
+    if (!Number.isFinite(x)) return;
     ctx.save();
     ctx.setLineDash([6,6]);
     ctx.strokeStyle = 'rgba(75, 85, 99, 0.55)';
@@ -709,7 +739,8 @@ let appState = {
   dashboardShareHoverSource: '',
   rankingsHoverIndex: null,
   membersHoverIndex: null,
-  sleepingHoverIndex: null
+  sleepingHoverIndex: null,
+  hoverClearTimers: {}
 };
 
 function syncResultAreaToControlPanel(){
@@ -1318,6 +1349,22 @@ function setActiveGlow(selector){
   if (el && el.classList.contains('section-title')) el = el.closest('.card');
   if (el) el.classList.add('active-glow');
 }
+function clearHoverTimer(key){
+  if (!key) return;
+  const t = appState.hoverClearTimers?.[key];
+  if (t) {
+    clearTimeout(t);
+    appState.hoverClearTimers[key] = null;
+  }
+}
+function scheduleHoverClear(key, callback, delayMs = 90){
+  if (!key || typeof callback !== 'function') return;
+  clearHoverTimer(key);
+  appState.hoverClearTimers[key] = setTimeout(() => {
+    appState.hoverClearTimers[key] = null;
+    callback();
+  }, delayMs);
+}
 function resolveHoverIndexFromEvent(chart, evt, elements){
   if (elements && elements.length) return elements[0].index;
   const native = evt?.native;
@@ -1329,9 +1376,25 @@ function resolveHoverIndexFromEvent(chart, evt, elements){
   if (!rect || !area) return null;
   const x = native.clientX - rect.left;
   const y = native.clientY - rect.top;
-  if (x < area.left || x > area.right || y < area.top - 8 || y > area.bottom + 72) return null;
+  if (x < area.left - 20 || x > area.right + 20) return null;
   const raw = xScale.getValueForPixel(x);
-  if (raw == null) return null;
+  if (raw == null) {
+    const meta = chart.getDatasetMeta(0);
+    const points = meta?.data || [];
+    if (!points.length) return null;
+    let nearestIdx = null;
+    let nearestDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const px = points[i]?.x;
+      if (!Number.isFinite(px)) continue;
+      const d = Math.abs(px - x);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestIdx = i;
+      }
+    }
+    return nearestIdx;
+  }
   if (typeof raw === 'number' && Number.isFinite(raw)) {
     const idx = Math.round(raw);
     return idx >= 0 && idx < labels.length ? idx : null;
@@ -1431,12 +1494,12 @@ function renderRankingTabCharts(mode){
     const barChart = appState.charts.rankingsBar;
     if (!lineChart || !barChart) return;
     const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
-    lineChart.data.datasets[0].pointRadius = values.map((_, i) => idx == null ? 3 : (i === idx ? 7 : 3));
-    lineChart.data.datasets[0].pointHoverRadius = values.map((_, i) => idx == null ? 4 : (i === idx ? 9 : 3));
+    lineChart.data.datasets[0].pointRadius = values.map((_, i) => idx == null ? 3 : (i === idx ? 5 : 3));
+    lineChart.data.datasets[0].pointHoverRadius = values.map((_, i) => idx == null ? 4 : (i === idx ? 6 : 3));
     lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
     lineChart.data.datasets[0].pointBackgroundColor = values.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
-    lineChart.data.datasets[0].pointBorderColor = values.map((_, i) => idx == null ? 'rgba(37,99,235,1)' : (i === idx ? 'rgba(29,78,216,1)' : 'rgba(37,99,235,1)'));
-    lineChart.data.datasets[0].pointBorderWidth = values.map((_, i) => idx != null && i === idx ? 3 : 1);
+    lineChart.data.datasets[0].pointBorderColor = values.map(() => 'rgba(0,0,0,0)');
+    lineChart.data.datasets[0].pointBorderWidth = values.map(() => 0);
     barChart.data.datasets[0].backgroundColor = values.map((_, i) => basePalette.bg[i]);
     barChart.data.datasets[0].borderColor = values.map((_, i) => basePalette.border[i]);
     barChart.data.datasets[0].borderWidth = 0;
@@ -1478,6 +1541,7 @@ function renderRankingTabCharts(mode){
   };
   const handleHover = (evt, elements, sourceChart) => {
     const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.rankingsLine : appState.charts.rankingsBar, evt, elements);
+    if (idx != null) clearHoverTimer('rankings');
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.rankingsHoverIndex === idx) return;
     applyRankingHover(idx, sourceChart);
@@ -1489,7 +1553,7 @@ function renderRankingTabCharts(mode){
       labels: labels,
       datasets:[{label:title1, data: values, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}]
     },
-    options: { ...commonLabelOpts, onHover: (evt, elements) => handleHover(evt, elements, 'line') }
+    options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleHover(evt, elements, 'line') }
   });
 
   appState.charts.rankingsBar = new Chart(document.getElementById('rankingsBarChart'), {
@@ -1498,11 +1562,11 @@ function renderRankingTabCharts(mode){
       labels: labels,
       datasets:[{label:title2, data: values, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(values.length).bg, borderColor:getChartPalette(values.length).border, borderWidth:0}]
     },
-    options: { ...commonLabelOpts, onHover: (evt, elements) => handleHover(evt, elements, 'bar') }
+    options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleHover(evt, elements, 'bar') }
   });
   const clearRankingHover = (sourceChart) => {
     if (appState.rankingsHoverIndex == null) return;
-    applyRankingHover(null, sourceChart);
+    scheduleHoverClear('rankings', () => applyRankingHover(null, sourceChart));
   };
   if (appState.charts.rankingsLine?.canvas) {
     appState.charts.rankingsLine.canvas.onmouseleave = () => clearRankingHover('line');
@@ -1587,8 +1651,9 @@ function renderMembersTabCharts(mode){
     const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
     appState.membersHoverIndex = idx;
     lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
-    lineChart.data.datasets[0].pointRadius = rightData.map((_, i) => idx == null ? 3 : (i === idx ? 7 : 3));
-    lineChart.data.datasets[0].pointHoverRadius = rightData.map((_, i) => idx == null ? 4 : (i === idx ? 9 : 3));
+    lineChart.data.datasets[0].pointRadius = rightData.map((_, i) => idx == null ? 3 : (i === idx ? 5 : 3));
+    lineChart.data.datasets[0].pointHoverRadius = rightData.map((_, i) => idx == null ? 4 : (i === idx ? 6 : 3));
+    lineChart.data.datasets[0].pointBorderWidth = rightData.map(() => 0);
     lineChart.data.datasets[0].pointBackgroundColor = rightData.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
     barChart.data.datasets[0].backgroundColor = rightData.map((_, i) => memberPalette.bg[i]);
     barChart.data.datasets[0].borderColor = rightData.map((_, i) => memberPalette.border[i]);
@@ -1622,6 +1687,7 @@ function renderMembersTabCharts(mode){
   };
   const handleMembersHover = (evt, elements, sourceChart) => {
     const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.membersLine : appState.charts.membersBar, evt, elements);
+    if (idx != null) clearHoverTimer('members');
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.membersHoverIndex === idx) return;
     applyMembersHover(idx, sourceChart);
@@ -1643,7 +1709,7 @@ function renderMembersTabCharts(mode){
   }
   const clearMembersHover = (sourceChart) => {
     if (appState.membersHoverIndex == null) return;
-    applyMembersHover(null, sourceChart);
+    scheduleHoverClear('members', () => applyMembersHover(null, sourceChart));
   };
   if (appState.charts.membersLine?.canvas) {
     appState.charts.membersLine.canvas.onmouseleave = () => clearMembersHover('line');
@@ -1733,8 +1799,9 @@ function renderSleepingTabCharts(mode){
     const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
     appState.sleepingHoverIndex = idx;
     lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
-    lineChart.data.datasets[0].pointRadius = rightData.map((_, i) => idx == null ? 3 : (i === idx ? 7 : 3));
-    lineChart.data.datasets[0].pointHoverRadius = rightData.map((_, i) => idx == null ? 4 : (i === idx ? 9 : 3));
+    lineChart.data.datasets[0].pointRadius = rightData.map((_, i) => idx == null ? 3 : (i === idx ? 5 : 3));
+    lineChart.data.datasets[0].pointHoverRadius = rightData.map((_, i) => idx == null ? 4 : (i === idx ? 6 : 3));
+    lineChart.data.datasets[0].pointBorderWidth = rightData.map(() => 0);
     lineChart.data.datasets[0].pointBackgroundColor = rightData.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
     barChart.data.datasets[0].backgroundColor = rightData.map((_, i) => sleepingPalette.bg[i]);
     barChart.data.datasets[0].borderColor = rightData.map((_, i) => sleepingPalette.border[i]);
@@ -1773,9 +1840,8 @@ function renderSleepingTabCharts(mode){
     }
   };
   const handleSleepingHover = (evt, elements, sourceChart) => {
-    const idx = sourceChart === 'bar' && (!elements || !elements.length)
-      ? null
-      : resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.sleepingLine : appState.charts.sleepingBar, evt, elements);
+    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.sleepingLine : appState.charts.sleepingBar, evt, elements);
+    if (idx != null) clearHoverTimer('sleeping');
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.sleepingHoverIndex === idx) return;
     applySleepingHover(idx, sourceChart);
@@ -1806,6 +1872,7 @@ function renderSleepingTabCharts(mode){
           }
         }
         ,
+        interaction:{mode:'index', intersect:false},
         onHover:(evt, elements) => handleSleepingHover(evt, elements, 'line')
       }
     });
@@ -1814,12 +1881,12 @@ function renderSleepingTabCharts(mode){
     appState.charts.sleepingBar = new Chart(document.getElementById('sleepingBarChart'), {
       type:'bar',
       data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:0}] },
-      options: { ...commonLabelOpts, onHover:(evt, elements) => handleSleepingHover(evt, elements, 'bar') }
+      options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover:(evt, elements) => handleSleepingHover(evt, elements, 'bar') }
     });
   }
   const clearSleepingHover = (sourceChart) => {
     if (appState.sleepingHoverIndex == null) return;
-    applySleepingHover(null, sourceChart);
+    scheduleHoverClear('sleeping', () => applySleepingHover(null, sourceChart));
   };
   if (appState.charts.sleepingLine?.canvas) {
     appState.charts.sleepingLine.canvas.onmouseleave = () => clearSleepingHover('line');
@@ -2056,6 +2123,11 @@ function updateDashboardCharts(mode){
       options:{
         responsive:true,
         maintainAspectRatio:false,
+        interaction:{mode:'index', intersect:false},
+        onHover:(evt, elements) => {
+          const idx = resolveHoverIndexFromEvent(appState.charts.repurchase, evt, elements);
+          if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
+        },
         plugins:{
           datalabels:{
             anchor:'end',
