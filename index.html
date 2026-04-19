@@ -2345,48 +2345,91 @@ function updateDashboardCharts(mode){
       ? { autoSkip: daySpan > 14, maxRotation: 45, minRotation: 0, padding: 8, color: '#55627a', font: { size: 11 } }
       : { autoSkip: false, maxRotation: 0, minRotation: 0, padding: 8, color: '#55627a', font: { size: 11 } };
 
+    const salesPerStoreData = trendRows.map((x) => {
+      const s = Number(x.sales_amount) || 0;
+      const c = Number(x.store_count) || 0;
+      return c > 0 ? s / c : null;
+    });
+
     appState.charts.monthly = new Chart(document.getElementById('monthlyChart'), {
       type:'line',
       data:{
         labels: trendRows.map(x => x[labelKey]),
         datasets:[
-          {label:'Sales', data: trendRows.map(x => x.sales_amount), tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:5, fill:false, clip:false, yAxisID:'y'},
-          {label:'Store Count', data: trendRows.map(x => x.store_count), tension:0.35, borderWidth:2, pointRadius:2, pointHoverRadius:4, fill:false, clip:false, yAxisID:'y1'}
+          {label:'Sales', data: trendRows.map(x => x.sales_amount), tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:5, fill:false, clip:false, yAxisID:'y', borderColor:'rgba(59, 130, 246, 0.95)', backgroundColor:'rgba(59, 130, 246, 0.1)'},
+          {label:'Store Count', data: trendRows.map(x => x.store_count), tension:0.35, borderWidth:2, pointRadius:2, pointHoverRadius:4, fill:false, clip:false, yAxisID:'y1', borderColor:'rgba(236, 72, 153, 0.9)', backgroundColor:'transparent'},
+          {label:'Sales / Store', data: salesPerStoreData, tension:0.35, borderWidth:2, pointRadius:2, pointHoverRadius:4, fill:false, clip:false, spanGaps:false, yAxisID:'y2', borderColor:'rgba(22, 163, 74, 0.95)', backgroundColor:'transparent', pointBackgroundColor:'rgba(22, 163, 74, 0.95)', pointBorderColor:'rgba(22, 163, 74, 0.95)'}
         ]
       },
       options:{
         responsive:true,
         maintainAspectRatio:false,
         interaction:{mode:'index', intersect:false},
-        layout:{padding:{top:28,right:40,bottom:12,left:40}},
+        layout:{padding:{top:28,right:52,bottom:12,left:40}},
         scales:{
           x:{offset:true,grid:{display:false},ticks:xTickOpts},
           y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}},
-          y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, border:{display:false}, ticks:{padding:8,color:'#55627a',font:{size:11}, precision:0}}
+          y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, border:{display:false}, ticks:{padding:8,color:'#55627a',font:{size:11}, precision:0}},
+          y2:{
+            position:'right',
+            offset:true,
+            beginAtZero:false,
+            grace:'2%',
+            grid:{drawOnChartArea:false},
+            border:{display:false},
+            ticks:{padding:8,color:'#15803d',font:{size:11}}
+          }
         },
         plugins:{
           legend:{
             display:true,
             labels:{
-              boxWidth:28,
+              usePointStyle:true,
+              pointStyle:'rect',
+              boxWidth:10,
+              boxHeight:10,
               padding:16,
-              generateLabels:(chart)=>Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => ({
-                ...item,
-                lineWidth: 0,
-                strokeStyle: 'transparent'
-              }))
+              generateLabels:(chart)=>{
+                const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                return base.map((item)=>{
+                  const ds = chart.data.datasets[item.datasetIndex];
+                  const c = ds && ds.borderColor;
+                  const fill = typeof c === 'string' ? c : (Array.isArray(c) ? c[0] : '#6b7280');
+                  return {
+                    ...item,
+                    fillStyle: fill,
+                    strokeStyle: fill,
+                    lineWidth: 0,
+                    lineDash: []
+                  };
+                });
+              }
             }
           },
-          tooltip:{enabled:true, mode:'index', intersect:false},
+          tooltip:{
+            enabled:true,
+            mode:'index',
+            intersect:false,
+            callbacks:{
+              label:(ctx)=>{
+                const v = ctx.parsed?.y;
+                if (v == null || Number.isNaN(v)) return (ctx.dataset.label || '') + ': —';
+                if (ctx.datasetIndex === 2) return (ctx.dataset.label || '') + ': ' + fmtCurrency(v);
+                if (ctx.datasetIndex === 1) return (ctx.dataset.label || '') + ': ' + fmtInt(v);
+                return (ctx.dataset.label || '') + ': ' + fmtCurrency(v);
+              }
+            }
+          },
           datalabels:{
-            display:(ctx)=>ctx.datasetIndex===0,
+            display:(ctx)=>ctx.datasetIndex===0 || ctx.datasetIndex===2,
             anchor:'end',
             align:'end',
             clamp:true,
             clip:false,
             offset:4,
             formatter:(value)=>shortNumber(value),
-            font:{weight:'600',size:11},color:'#4b5563'
+            font:{weight:'600',size:11},
+            color:(ctx)=>ctx.datasetIndex===2 ? '#15803d' : '#4b5563'
           }
         }
       }
@@ -2410,8 +2453,12 @@ function updateDashboardCharts(mode){
           datalabels:{
             anchor:'end',
             align:'end',
+            clamp:true,
+            clip:false,
+            offset:2,
             formatter:(value)=>shortNumber(value),
-            font:{weight:'600',size:11},color:'#4b5563'
+            color:'#111827',
+            font:{ weight:'600', size:11 }
           }
         }
       }
