@@ -18,6 +18,12 @@
     *{box-sizing:border-box}
     body{margin:0;font-family:Arial, sans-serif;background:radial-gradient(circle at 30% 40%, rgba(120, 80, 255, 0.4), transparent 40%),radial-gradient(circle at 70% 60%, rgba(0, 150, 255, 0.3), transparent 50%),linear-gradient(180deg, #0b0f2a, #050816);min-height:100vh;color:var(--text)}
     .wrap{max-width:1400px;margin:24px auto;padding:0 16px}
+    .app-footer{max-width:1400px;margin:32px auto 0;padding:0 16px 28px;border-top:1px solid rgba(255,255,255,.14);background:transparent}
+    .app-footer-inner{display:flex;justify-content:flex-end;align-items:center;min-height:48px;padding-top:14px}
+    .app-footer-meta{font-size:13px;color:#94a3b8;font-weight:400}
+    .app-footer-meta a{color:#a5b4fc;text-decoration:none}
+    .app-footer-meta a:hover{text-decoration:underline}
+    .app-footer-sep{margin:0 10px;opacity:.65;color:#64748b}
     h1{margin:0 0 8px;font-size:28px;color:#f8fbff;text-shadow:0 0 18px rgba(105,105,159,.40), 0 2px 12px rgba(0,0,0,.35)}
     p{margin:6px 0;color:#d7def2}
     .grid{display:grid;gap:16px}
@@ -584,6 +590,14 @@ input[type="date"], select.control-select{
   </div>
 </div>
 
+<footer class="app-footer" role="contentinfo">
+  <div class="app-footer-inner">
+    <span class="app-footer-meta">
+      <a href="https://github.com/Hejun-Coderlife/sales-analysis-app/issues" target="_blank" rel="noopener noreferrer">Report an issue</a><span class="app-footer-sep">|</span>© 2026 Hejun
+    </span>
+  </div>
+</footer>
+
 <script>
 const HEADER_CANDIDATES = {
   store: ['门店','门店名称','店铺','所属门店','Store','Store Name'],
@@ -963,6 +977,10 @@ function analyze(cleaned, cfg){
     .map(([year_month, items]) => ({year_month, sales_amount:sum(items,'amount'), store_count:new Set(items.map(x=>x.store).filter(Boolean)).size}))
     .sort((a,b)=>a.year_month.localeCompare(b.year_month));
 
+  const daily = [...groupBy(cleaned.filter(r=>r.date), r => ymd(r.date)).entries()]
+    .map(([day, items]) => ({ day, sales_amount: sum(items, 'amount'), store_count: new Set(items.map(x => x.store).filter(Boolean)).size }))
+    .sort((a, b) => a.day.localeCompare(b.day));
+
   const bucketCounter = {};
   for (const m of memberRank){
     const bucket = m.order_count === 1 ? '1 order' : m.order_count === 2 ? '2 orders' : m.order_count === 3 ? '3 orders' : m.order_count <= 5 ? '4-5 orders' : '6+ orders';
@@ -997,7 +1015,7 @@ function analyze(cleaned, cfg){
       aClassSleepingMembers: sleepList.filter(x=>x.priority==='A').length,
       filesLoaded: fileCheck.length
     },
-    storeRank, salespersonRank, productRank, ticketRank, memberRank, sleepList, monthly, repurchaseDistribution, fileCheck, sleepByStore,
+    storeRank, salespersonRank, productRank, ticketRank, memberRank, sleepList, monthly, daily, repurchaseDistribution, fileCheck, sleepByStore,
     sleepSummary: [
       { metric:'Analysis Cutoff Date', value: ymd(analysisDate) },
       { metric:'Sleeping Members', value: sleepList.length },
@@ -1963,6 +1981,43 @@ function getCurrentAnalysisConfig(){
   };
 }
 
+function inclusiveDaySpan(startStr, endStr){
+  if (!startStr || !endStr) return null;
+  const s = new Date(startStr + 'T12:00:00');
+  const e = new Date(endStr + 'T12:00:00');
+  if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return null;
+  return Math.floor((e - s) / 86400000) + 1;
+}
+
+function expandDailyToRange(dailyRows, startStr, endStr){
+  const rows = Array.isArray(dailyRows) ? dailyRows : [];
+  const map = new Map(rows.map(d => [d.day, d]));
+  if (!startStr || !endStr) return rows.slice();
+  const cur = new Date(startStr + 'T12:00:00');
+  const end = new Date(endStr + 'T12:00:00');
+  if (isNaN(cur.getTime()) || isNaN(end.getTime()) || end < cur) return rows.slice();
+  const out = [];
+  while (cur <= end){
+    const key = ymd(cur);
+    const row = map.get(key);
+    out.push(row || { day: key, sales_amount: 0, store_count: 0 });
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+function getDashboardTrendPresentation(results){
+  if (!results) return { useDaily: false, rows: [], daySpan: null, labelKey: 'year_month' };
+  const startValue = document.getElementById('dashboardStartDate')?.value || '';
+  const endValue = document.getElementById('dashboardEndDate')?.value || '';
+  const daySpan = inclusiveDaySpan(startValue, endValue);
+  const useDaily = daySpan != null && daySpan <= 31;
+  const rows = useDaily
+    ? expandDailyToRange(results.daily || [], startValue, endValue)
+    : (results.monthly || []);
+  return { useDaily, rows, daySpan, labelKey: useDaily ? 'day' : 'year_month' };
+}
+
 function getDashboardFilteredBaseRows(){
   if (!appState.results) return [];
   const original = appState.results.originalCleaned || [];
@@ -2070,16 +2125,22 @@ function updateDashboardCharts(mode){
 
   if (!mode || mode === 'default'){
     appState.dashboardShareSelection = { mode: 'default', index: null };
-    leftTitle.textContent = 'Monthly Sales Trend';
+    const trend = getDashboardTrendPresentation(results);
+    const { useDaily, rows: trendRows, daySpan, labelKey } = trend;
+    leftTitle.textContent = useDaily ? 'Daily Sales Trend' : 'Monthly Sales Trend';
     rightTitle.textContent = 'Repurchase Structure';
+
+    const xTickOpts = useDaily && daySpan != null && daySpan > 7
+      ? { autoSkip: daySpan > 14, maxRotation: 45, minRotation: 0, padding: 8, color: '#55627a', font: { size: 11 } }
+      : { autoSkip: false, maxRotation: 0, minRotation: 0, padding: 8, color: '#55627a', font: { size: 11 } };
 
     appState.charts.monthly = new Chart(document.getElementById('monthlyChart'), {
       type:'line',
       data:{
-        labels:results.monthly.map(x=>x.year_month),
+        labels: trendRows.map(x => x[labelKey]),
         datasets:[
-          {label:'Sales', data:results.monthly.map(x=>x.sales_amount), tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:5, fill:false, clip:false, yAxisID:'y'},
-          {label:'Store Count', data:results.monthly.map(x=>x.store_count), tension:0.35, borderWidth:2, pointRadius:2, pointHoverRadius:4, fill:false, clip:false, yAxisID:'y1'}
+          {label:'Sales', data: trendRows.map(x => x.sales_amount), tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:5, fill:false, clip:false, yAxisID:'y'},
+          {label:'Store Count', data: trendRows.map(x => x.store_count), tension:0.35, borderWidth:2, pointRadius:2, pointHoverRadius:4, fill:false, clip:false, yAxisID:'y1'}
         ]
       },
       options:{
@@ -2088,7 +2149,7 @@ function updateDashboardCharts(mode){
         interaction:{mode:'index', intersect:false},
         layout:{padding:{top:28,right:40,bottom:12,left:40}},
         scales:{
-          x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:0,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+          x:{offset:true,grid:{display:false},ticks:xTickOpts},
           y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}},
           y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, border:{display:false}, ticks:{padding:8,color:'#55627a',font:{size:11}, precision:0}}
         },
@@ -2120,7 +2181,7 @@ function updateDashboardCharts(mode){
       }
     });
 
-    setDownloadTarget('dashboard_results.xlsx', [{ name:'Monthly Sales', rows: results.monthly || [] }, { name:'Repurchase Structure', rows: results.repurchaseDistribution || [] }]);
+    setDownloadTarget('dashboard_results.xlsx', [{ name: useDaily ? 'Daily Sales' : 'Monthly Sales', rows: trendRows }, { name:'Repurchase Structure', rows: results.repurchaseDistribution || [] }]);
     clearActiveGlows();
     appState.charts.repurchase = new Chart(document.getElementById('repurchaseChart'), {
       type:'bar',
@@ -2352,8 +2413,9 @@ function renderResults(results, mappings){
       onGlobalFiltersChanged(true);
   updateControlVisibility(document.querySelector('.tab.active')?.dataset.tab || 'dashboard');
 
+  const exportTrend = getDashboardTrendPresentation(getActiveResults());
   setDownloadTarget('dashboard_results.xlsx', [
-    { name:'Monthly Sales', rows: getActiveResults()?.monthly || results.monthly || [] },
+    { name: exportTrend.useDaily ? 'Daily Sales' : 'Monthly Sales', rows: exportTrend.rows.length ? exportTrend.rows : (getActiveResults()?.monthly || results.monthly || []) },
     { name:'Repurchase Structure', rows: getActiveResults()?.repurchaseDistribution || results.repurchaseDistribution || [] }
   ]);
 
