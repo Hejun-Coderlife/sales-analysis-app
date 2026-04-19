@@ -2406,6 +2406,7 @@ function updateDashboardCharts(mode){
           if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
         },
         plugins:{
+          legend:{ display:false },
           datalabels:{
             anchor:'end',
             align:'end',
@@ -2503,26 +2504,7 @@ function updateDashboardCharts(mode){
         applyDashboardShareSelection(rows, labelKey, valueKey, leftTitle, leftBaseTitle, rightTitle, rightBaseTitle);
       },
       plugins:{
-        legend:{
-          display:true,
-          position:'top',
-          align:'start',
-          labels:{
-            boxWidth:48,
-            boxHeight:18,
-            padding:18,
-            color:'#55627a',
-            font:{size:11},
-            generateLabels:(chart)=>{
-              const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-              if (mode !== 'products') return labels;
-              return labels.map(item => ({
-                ...item,
-                text: item.text && item.text.length > 14 ? item.text.slice(0, 14) + '...' : item.text
-              }));
-            }
-          }
-        },
+        legend:{ display:false },
         tooltip:{
           callbacks:{
             title:(items)=>{
