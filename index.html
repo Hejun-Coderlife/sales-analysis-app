@@ -2192,6 +2192,7 @@ function updateDashboardCharts(mode){
       maintainAspectRatio:false,
       onHover:(evt, elements) => {
         const idx = resolveHoverIndexFromEvent(appState.charts.monthly, evt, elements);
+        if (idx != null) clearHoverTimer('dashboardShare');
         if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
         if (appState.dashboardShareHoverIndex === idx && appState.dashboardShareHoverSource === 'left') return;
         appState.dashboardShareHoverIndex = idx;
@@ -2219,6 +2220,7 @@ function updateDashboardCharts(mode){
       layout:{padding:{top:12,right:12,bottom:12,left:12}},
       onHover:(evt, elements) => {
         const idx = resolveHoverIndexFromEvent(appState.charts.repurchase, evt, elements);
+        if (idx != null) clearHoverTimer('dashboardShare');
         evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
         if (appState.dashboardShareHoverIndex === idx && appState.dashboardShareHoverSource === 'right') return;
         appState.dashboardShareHoverIndex = idx;
@@ -2276,6 +2278,18 @@ function updateDashboardCharts(mode){
     }
   });
   applyDashboardShareSelection(rows, labelKey, valueKey, leftTitle, leftBaseTitle, rightTitle, rightBaseTitle);
+  const clearDashboardShareHover = () => {
+    if (appState.dashboardShareHoverIndex == null) return;
+    appState.dashboardShareHoverIndex = null;
+    appState.dashboardShareHoverSource = '';
+    applyDashboardShareSelection(rows, labelKey, valueKey, leftTitle, leftBaseTitle, rightTitle, rightBaseTitle);
+  };
+  if (appState.charts.monthly?.canvas) {
+    appState.charts.monthly.canvas.onmouseleave = () => scheduleHoverClear('dashboardShare', clearDashboardShareHover);
+  }
+  if (appState.charts.repurchase?.canvas) {
+    appState.charts.repurchase.canvas.onmouseleave = () => scheduleHoverClear('dashboardShare', clearDashboardShareHover);
+  }
 }
 
 function renderCharts(results){
