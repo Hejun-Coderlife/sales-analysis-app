@@ -85,7 +85,7 @@ input[type="date"], select.control-select{
 .store-selected{font-size:12px;color:#6b7280;min-height:16px}
 .multi-grid{
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-columns:repeat(3,minmax(0,1fr));
   gap:14px 18px;
   grid-column:1 / -1;
   align-items:start;
@@ -146,6 +146,9 @@ input[type="date"], select.control-select{
 .clear-filter-btn:hover{background:#fff2fd}
 .active-glow{
   box-shadow:0 0 0 2px #fe70f6, 0 0 24px rgba(254,112,246,.22) !important;
+}
+@media (max-width: 1100px){
+  .multi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width: 900px){
   .multi-grid{grid-template-columns:1fr}
@@ -384,6 +387,20 @@ input[type="date"], select.control-select{
                   <input id="dashboardSalespersonSearch" class="store-search-input" type="text" placeholder="Search salesperson" />
                   <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearSalespeopleBtn">Done</button></div>
                   <div id="dashboardSalespersonOptions" class="store-options"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <label>Products</label>
+              <div class="filter-dropdown" id="dashboardProductDropdown">
+                <button type="button" class="filter-trigger" id="dashboardProductTrigger">
+                  <span id="dashboardProductTriggerText">All products</span>
+                  <span class="filter-caret">▾</span>
+                </button>
+                <div class="filter-menu hidden" id="dashboardProductMenu">
+                  <input id="dashboardProductSearch" class="store-search-input" type="text" placeholder="Search product" />
+                  <div class="dropdown-actions"><button type="button" class="clear-filter-btn" id="clearProductBtn">Done</button></div>
+                  <div id="dashboardProductOptions" class="store-options"></div>
                 </div>
               </div>
             </div>
@@ -817,6 +834,7 @@ let appState = {
   charts: {},
   selectedStores: new Set(),
   selectedSalespeople: new Set(),
+  selectedProducts: new Set(),
   selectedSleepingSalesperson: '',
   dashboardShareSelection: { mode: '', index: null },
   dashboardShareHoverIndex: null,
@@ -1191,6 +1209,17 @@ function useDownloadTarget(){
   downloadWorkbook(appState.downloadTarget.filename, appState.downloadTarget.sheets);
 }
 
+function debounce(fn, waitMs){
+  let t = null;
+  return function(...args){
+    clearTimeout(t);
+    t = setTimeout(() => { fn.apply(this, args); }, waitMs);
+  };
+}
+const debouncedPopulateDashboardStoreOptions = debounce(populateDashboardStoreOptions, 280);
+const debouncedPopulateDashboardSalespersonOptions = debounce(populateDashboardSalespersonOptions, 280);
+const debouncedPopulateDashboardProductOptions = debounce(populateDashboardProductOptions, 280);
+
 function selectedDashboardSalespeople(){
   return [...appState.selectedSalespeople];
 }
@@ -1233,6 +1262,88 @@ function updateDashboardSalespersonSelectedText(){
   const selected = selectedDashboardSalespeople();
   if (!selected.length) { el.textContent = 'All salespeople'; return; }
   el.textContent = selected.length <= 2 ? selected.join(', ') : selected.length + ' salespeople';
+}
+function selectedDashboardProducts(){
+  return [...appState.selectedProducts];
+}
+function updateDashboardProductSelectedText(){
+  const el = document.getElementById('dashboardProductTriggerText');
+  if (!el) return;
+  const selected = selectedDashboardProducts();
+  if (!selected.length) { el.textContent = 'All products'; return; }
+  el.textContent = selected.length <= 2 ? selected.join(', ') : selected.length + ' products';
+}
+function populateDashboardProductOptions(){
+  const wrap = document.getElementById('dashboardProductOptions');
+  if (!wrap || !appState.results?.originalCleaned) return;
+  const search = (document.getElementById('dashboardProductSearch')?.value || '').trim().toLowerCase();
+  const prev = new Set(appState.selectedProducts);
+  const selectedStores = selectedDashboardStores();
+  const selectedSalespeople = selectedDashboardSalespeople();
+  const sourceRows = (appState.results.originalCleaned || []).filter(r =>
+    (!selectedStores.length || selectedStores.includes(normalizeText(r.store))) &&
+    (!selectedSalespeople.length || selectedSalespeople.includes(normalizeText(r.salesperson)))
+  );
+  const products = [...new Set(sourceRows.map(r => normalizeText(r.product)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const allowed = new Set(products);
+  appState.selectedProducts = new Set([...prev].filter(p => allowed.has(p)));
+  const filtered = products.filter(p => appState.selectedProducts.has(p) || !search || p.toLowerCase().includes(search));
+  // With search text, "All products" selects/deselects only rows matching that search.
+  const searchScopeAll = search
+    ? products.filter(p => p.toLowerCase().includes(search))
+    : products;
+  const optionsHtml = filtered.map(prod => {
+    const checked = appState.selectedProducts.has(prod);
+    return '<label class="store-option"><input type="checkbox" value="' + prod.replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '> <span>' + prod + '</span></label>';
+  }).join('');
+  wrap.innerHTML = '<label class="store-option"><input type="checkbox" id="dashboardProductAllOption"> <span>All products</span></label>' + (optionsHtml || '<div class="small">No matching products</div>');
+  const allOpt = document.getElementById('dashboardProductAllOption');
+  function syncProductAllCheckbox(){
+    if (!allOpt) return;
+    allOpt.checked = searchScopeAll.length > 0 && searchScopeAll.every(p => appState.selectedProducts.has(p));
+  }
+  function syncProductRowCheckboxes(){
+    wrap.querySelectorAll('input[type="checkbox"]').forEach(x => {
+      if (x === allOpt) return;
+      const value = normalizeText(x.value);
+      x.checked = appState.selectedProducts.has(value);
+    });
+    syncProductAllCheckbox();
+  }
+  if (allOpt) {
+    syncProductAllCheckbox();
+    allOpt.addEventListener('change', () => {
+      if (allOpt.checked) {
+        if (search) {
+          searchScopeAll.forEach(p => appState.selectedProducts.add(p));
+        } else {
+          appState.selectedProducts = new Set(products);
+        }
+        syncProductRowCheckboxes();
+      } else {
+        if (search) {
+          searchScopeAll.forEach(p => appState.selectedProducts.delete(p));
+        } else {
+          appState.selectedProducts.clear();
+        }
+        syncProductRowCheckboxes();
+      }
+      updateDashboardProductSelectedText();
+      onGlobalFiltersChanged(true);
+    });
+  }
+  wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (cb === allOpt) return;
+    cb.addEventListener('change', () => {
+      const value = normalizeText(cb.value);
+      if (cb.checked) appState.selectedProducts.add(value);
+      else appState.selectedProducts.delete(value);
+      syncProductAllCheckbox();
+      updateDashboardProductSelectedText();
+      onGlobalFiltersChanged(true);
+    });
+  });
+  updateDashboardProductSelectedText();
 }
 function populateDashboardSalespersonOptions(){
   const wrap = document.getElementById('dashboardSalespersonOptions');
@@ -1278,6 +1389,7 @@ function populateDashboardSalespersonOptions(){
     });
   });
   updateDashboardSalespersonSelectedText();
+  populateDashboardProductOptions();
 }
 
 function selectedDashboardStores(){
@@ -2227,6 +2339,7 @@ function getDashboardFilteredBaseRows(){
   const endValue = document.getElementById('dashboardEndDate')?.value || '';
   const selectedStores = selectedDashboardStores();
   const selectedSalespeople = selectedDashboardSalespeople();
+  const selectedProducts = selectedDashboardProducts();
   const startDate = startValue ? new Date(startValue + 'T00:00:00') : null;
   const endDate = endValue ? new Date(endValue + 'T23:59:59') : null;
   return original.filter(r => {
@@ -2234,7 +2347,8 @@ function getDashboardFilteredBaseRows(){
     const okEnd = !endDate || !r.date || r.date <= endDate;
     const okStore = !selectedStores.length || selectedStores.includes(normalizeText(r.store));
     const okSalesperson = !selectedSalespeople.length || selectedSalespeople.includes(normalizeText(r.salesperson));
-    return okStart && okEnd && okStore && okSalesperson;
+    const okProduct = !selectedProducts.length || selectedProducts.includes(normalizeText(r.product));
+    return okStart && okEnd && okStore && okSalesperson && okProduct;
   });
 }
 
@@ -2642,6 +2756,7 @@ function renderResults(results, mappings){
   updateDateRangeTriggerText();
   populateDashboardStoreOptions();
   populateDashboardSalespersonOptions();
+  populateDashboardProductOptions();
 
   // validation stays from original full run
   renderTable('fileCheckTable', results.fileCheck || [], {included_rows:fmtInt, order_count:fmtInt, q_sum:fmtCurrency, negative_rows:fmtInt, negative_sum:fmtCurrency}, true);
@@ -2793,6 +2908,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'dashboard') {
       populateDashboardStoreOptions();
       populateDashboardSalespersonOptions();
+      populateDashboardProductOptions();
       populateSleepingSalespersonOptions();
       updateDateRangeTriggerText();
       updateDashboardCharts('default');
@@ -2815,9 +2931,9 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 document.getElementById('dashboardStartDate')?.addEventListener('change', updateDateRangeTriggerText);
 document.getElementById('dashboardEndDate')?.addEventListener('change', updateDateRangeTriggerText);
-document.getElementById('dashboardStoreSearch')?.addEventListener('input', populateDashboardStoreOptions);
-document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
-document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', populateDashboardSalespersonOptions);
+document.getElementById('dashboardStoreSearch')?.addEventListener('input', debouncedPopulateDashboardStoreOptions);
+document.getElementById('dashboardSalespersonSearch')?.addEventListener('input', debouncedPopulateDashboardSalespersonOptions);
+document.getElementById('dashboardProductSearch')?.addEventListener('input', debouncedPopulateDashboardProductOptions);
 document.getElementById('sleepSalespersonSearch')?.addEventListener('input', populateSleepingSalespersonOptions);
 document.getElementById('sleepDays')?.addEventListener('input', onGlobalFiltersChanged);
 document.getElementById('sleepMinOrders')?.addEventListener('input', onGlobalFiltersChanged);
@@ -2825,6 +2941,7 @@ document.getElementById('aclassMinAmount')?.addEventListener('input', onGlobalFi
 updateControlVisibility('dashboard');
 populateDashboardStoreOptions();
 populateDashboardSalespersonOptions();
+populateDashboardProductOptions();
 populateSleepingSalespersonOptions();
 
 document.getElementById('topStoresCard')?.addEventListener('click', () => updateDashboardCharts('stores'));
@@ -2960,8 +3077,12 @@ document.getElementById('clearStoreBtn')?.addEventListener('click', () => {
 document.getElementById('clearSalespeopleBtn')?.addEventListener('click', () => {
   toggleDropdown('dashboardSalespersonMenu', false);
 });
+document.getElementById('clearProductBtn')?.addEventListener('click', () => {
+  toggleDropdown('dashboardProductMenu', false);
+});
 document.getElementById('dashboardStoreTrigger')?.addEventListener('click', () => toggleDropdown('dashboardStoreMenu'));
 document.getElementById('dashboardSalespersonTrigger')?.addEventListener('click', () => toggleDropdown('dashboardSalespersonMenu'));
+document.getElementById('dashboardProductTrigger')?.addEventListener('click', () => toggleDropdown('dashboardProductMenu'));
 document.getElementById('applyDateRangeBtn')?.addEventListener('click', () => {
   updateDateRangeTriggerText();
   toggleDropdown('dashboardDateMenu', false);
