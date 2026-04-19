@@ -614,6 +614,67 @@ const HEADER_CANDIDATES = {
 
 Chart.register(ChartDataLabels);
 
+const sharedCartesianChartStyle = {
+  layout:{padding:{top:28,right:40,bottom:12,left:40}},
+  scales:{
+    x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+    y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
+  }
+};
+const sharedRankingBarPlugins = {
+  legend:{display:false,labels:{boxWidth:28,padding:16}},
+  datalabels:{
+    anchor:'end',
+    align:'end',
+    clamp:true,
+    clip:false,
+    offset:4,
+    formatter:(value)=>shortNumber(value),
+    font:{weight:'600',size:11},color:'#4b5563'
+  }
+};
+
+function guideLineXFromChart(chart, index){
+  if (!chart || !Number.isInteger(index) || index < 0) return null;
+  const labels = chart.data?.labels || [];
+  if (index >= labels.length) return null;
+  const meta0 = chart.getDatasetMeta(0);
+  const el = meta0?.data?.[index];
+  if (el && Number.isFinite(el.x)) return el.x;
+  const xScale = chart.scales?.x;
+  if (!xScale) return null;
+  const label = labels[index];
+  try {
+    if (typeof xScale.getPixelForValue === 'function'){
+      let px = xScale.getPixelForValue(label, index);
+      if (Number.isFinite(px)) return px;
+      px = xScale.getPixelForValue(index);
+      if (Number.isFinite(px)) return px;
+    }
+  } catch (_e) {}
+  try {
+    if (typeof xScale.getPixelForTick === 'function'){
+      const px = xScale.getPixelForTick(index);
+      if (Number.isFinite(px)) return px;
+    }
+  } catch (_e) {}
+  return null;
+}
+
+function strokeVerticalGuide(ctx, chartArea, x){
+  if (!Number.isFinite(x) || !chartArea) return;
+  const { top, bottom } = chartArea;
+  ctx.save();
+  ctx.setLineDash([6, 6]);
+  ctx.strokeStyle = 'rgba(75, 85, 99, 0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, top);
+  ctx.lineTo(x, bottom);
+  ctx.stroke();
+  ctx.restore();
+}
+
 const hoverGuidePlugin = {
   id: 'hoverGuidePlugin',
   afterDatasetsDraw(chart) {
@@ -625,21 +686,17 @@ const hoverGuidePlugin = {
         ? appState.membersHoverIndex
         : canvasId.startsWith('sleeping')
           ? appState.sleepingHoverIndex
-          : null;
-    if (Number.isInteger(syncedHoverIndex)) {
+          : (canvasId === 'monthlyChart' || canvasId === 'repurchaseChart')
+            ? appState.dashboardShareHoverIndex
+            : null;
+    const area = chart.chartArea;
+    if (!area) return;
+    if (Number.isInteger(syncedHoverIndex)){
       const metaPoint = chart.getDatasetMeta(0)?.data?.[syncedHoverIndex];
-      const x = metaPoint?.x;
-      if (Number.isFinite(x)) {
-        const {ctx, chartArea:{top,bottom}} = chart;
-        ctx.save();
-        ctx.setLineDash([6,6]);
-        ctx.strokeStyle = 'rgba(75, 85, 99, 0.55)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(x, top);
-        ctx.lineTo(x, bottom);
-        ctx.stroke();
-        ctx.restore();
+      let x = metaPoint && Number.isFinite(metaPoint.x) ? metaPoint.x : null;
+      if (x == null) x = guideLineXFromChart(chart, syncedHoverIndex);
+      if (Number.isFinite(x)){
+        strokeVerticalGuide(chart.ctx, area, x);
         return;
       }
     }
@@ -647,20 +704,11 @@ const hoverGuidePlugin = {
     const tooltipActive = (chart.tooltip && chart.tooltip.getActiveElements) ? (chart.tooltip.getActiveElements() || []) : [];
     const active = directActive.length ? directActive : tooltipActive;
     if (!active || !active.length) return;
-    const {ctx, chartArea:{top,bottom}} = chart;
     const first = active[0];
     const pointEl = first?.element || chart.getDatasetMeta(first?.datasetIndex || 0)?.data?.[first?.index || 0];
-    const x = pointEl?.x;
-    if (!Number.isFinite(x)) return;
-    ctx.save();
-    ctx.setLineDash([6,6]);
-    ctx.strokeStyle = 'rgba(75, 85, 99, 0.55)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x, top);
-    ctx.lineTo(x, bottom);
-    ctx.stroke();
-    ctx.restore();
+    let x = pointEl && Number.isFinite(pointEl.x) ? pointEl.x : null;
+    if (x == null && Number.isInteger(first?.index)) x = guideLineXFromChart(chart, first.index);
+    strokeVerticalGuide(chart.ctx, area, x);
   }
 };
 
@@ -1383,27 +1431,58 @@ function scheduleHoverClear(key, callback, delayMs = 90){
     callback();
   }, delayMs);
 }
+function eventXYInChartPixels(chart, nativeEvt){
+  if (!chart?.canvas || !nativeEvt) return null;
+  if (typeof Chart?.helpers?.getRelativePosition === 'function') {
+    try {
+      const pos = Chart.helpers.getRelativePosition(nativeEvt, chart);
+      if (pos && Number.isFinite(pos.x)) return { x: pos.x, y: pos.y };
+    } catch (_e) {}
+  }
+  const canvas = chart.canvas;
+  const rect = nativeEvt.target?.getBoundingClientRect?.();
+  if (!rect || !rect.width) return null;
+  const sx = canvas.width / rect.width;
+  const sy = canvas.height / rect.height;
+  return {
+    x: (nativeEvt.clientX - rect.left) * sx,
+    y: (nativeEvt.clientY - rect.top) * sy
+  };
+}
+
 function resolveHoverIndexFromEvent(chart, evt, elements){
   if (elements && elements.length) return elements[0].index;
   const native = evt?.native;
+  const chartType = chart?.config?.type;
+  if (chartType === 'doughnut' || chartType === 'pie' || chartType === 'polarArea'){
+    if (!native || !chart?.getElementsAtEventForMode) return null;
+    try {
+      const strict = chart.getElementsAtEventForMode(native, 'nearest', { intersect: true }, false);
+      if (strict && strict.length) return strict[0].index;
+    } catch (_e) {}
+    return null;
+  }
   const xScale = chart?.scales?.x;
   const labels = chart?.data?.labels || [];
   if (!native || !xScale || !labels.length) return null;
-  const rect = native.target?.getBoundingClientRect?.();
   const area = chart.chartArea;
-  if (!rect || !area) return null;
-  const x = native.clientX - rect.left;
-  const y = native.clientY - rect.top;
-  if (x < area.left - 20 || x > area.right + 20) return null;
+  if (!area) return null;
+  const pos = eventXYInChartPixels(chart, native);
+  if (!pos) return null;
+  const x = pos.x;
+  const edgeSlack = Math.max(56, (area.right - area.left) * 0.08);
+  if (x < area.left - edgeSlack || x > area.right + edgeSlack) return null;
   const raw = xScale.getValueForPixel(x);
   if (raw == null) {
     const meta = chart.getDatasetMeta(0);
     const points = meta?.data || [];
-    if (!points.length) return null;
+    const n = Math.max(points.length, (chart.data?.labels || []).length);
+    if (!n) return null;
     let nearestIdx = null;
     let nearestDist = Infinity;
-    for (let i = 0; i < points.length; i++) {
-      const px = points[i]?.x;
+    for (let i = 0; i < n; i++) {
+      let px = points[i]?.x;
+      if (!Number.isFinite(px)) px = guideLineXFromChart(chart, i);
       if (!Number.isFinite(px)) continue;
       const d = Math.abs(px - x);
       if (d < nearestDist) {
@@ -1428,23 +1507,8 @@ function renderRankingTabCharts(mode){
   const commonLabelOpts = {
     responsive:true,
     maintainAspectRatio:false,
-    layout:{padding:{top:28,right:40,bottom:12,left:40}},
-    scales:{
-      x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
-      y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
-    },
-    plugins:{
-      legend:{display:false,labels:{boxWidth:28,padding:16}},
-      datalabels:{
-        anchor:'end',
-        align:'end',
-        clamp:true,
-        clip:false,
-        offset:4,
-        formatter:(value)=>shortNumber(value),
-        font:{weight:'600',size:11},color:'#4b5563'
-      }
-    }
+    ...sharedCartesianChartStyle,
+    plugins: sharedRankingBarPlugins
   };
 
   if (appState.charts.rankingsLine) appState.charts.rankingsLine.destroy();
@@ -2096,6 +2160,13 @@ function applyDashboardShareSelection(rows, labelKey, valueKey, leftTitleEl, bas
   }
   leftChart.draw();
   if (rightChart) rightChart.draw();
+  if (hoverIdx != null) {
+    requestAnimationFrame(() => {
+      if (leftChart.destroyed) return;
+      leftChart.draw();
+      if (rightChart && !rightChart.destroyed) rightChart.draw();
+    });
+  }
 
   const mode = appState.dashboardShareSelection?.mode;
   const miniConfig = {
@@ -2125,6 +2196,8 @@ function updateDashboardCharts(mode){
 
   if (!mode || mode === 'default'){
     appState.dashboardShareSelection = { mode: 'default', index: null };
+    appState.dashboardShareHoverIndex = null;
+    appState.dashboardShareHoverSource = '';
     const trend = getDashboardTrendPresentation(results);
     const { useDaily, rows: trendRows, daySpan, labelKey } = trend;
     leftTitle.textContent = useDaily ? 'Daily Sales Trend' : 'Monthly Sales Trend';
@@ -2256,6 +2329,8 @@ function updateDashboardCharts(mode){
     options:{
       responsive:true,
       maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      ...sharedCartesianChartStyle,
       onHover:(evt, elements) => {
         const idx = resolveHoverIndexFromEvent(appState.charts.monthly, evt, elements);
         if (idx != null) clearHoverTimer('dashboardShare');
@@ -2265,14 +2340,7 @@ function updateDashboardCharts(mode){
         appState.dashboardShareHoverSource = 'left';
         applyDashboardShareSelection(rows, labelKey, valueKey, leftTitle, leftBaseTitle, rightTitle, rightBaseTitle);
       },
-      plugins:{
-        datalabels:{
-          anchor:'end',
-          align:'end',
-          formatter:(value)=>shortNumber(value),
-          font:{weight:'600',size:11},color:'#4b5563'
-        }
-      }
+      plugins: sharedRankingBarPlugins
     }
   });
 
@@ -2283,7 +2351,10 @@ function updateDashboardCharts(mode){
     options:{
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{top:12,right:12,bottom:12,left:12}},
+      interaction: rightChartType === 'doughnut'
+        ? { mode: 'nearest', intersect: true }
+        : { mode: 'index', intersect: false },
+      layout: sharedCartesianChartStyle.layout,
       onHover:(evt, elements) => {
         const idx = resolveHoverIndexFromEvent(appState.charts.repurchase, evt, elements);
         if (idx != null) clearHoverTimer('dashboardShare');
