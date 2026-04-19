@@ -614,6 +614,28 @@ const HEADER_CANDIDATES = {
 
 Chart.register(ChartDataLabels);
 
+/** Anchor Rankings tooltips to appState.rankingsHoverIndex geometry so long x-axis labels cannot desync text vs placement. */
+if (Chart?.Tooltip?.positioners) {
+  Chart.Tooltip.positioners.rankingsSynced = function(items, event){
+    const chart = items && items[0] && items[0].chart;
+    const idx = appState.rankingsHoverIndex;
+    if (!chart || !Number.isInteger(idx)) return false;
+    const el = chart.getDatasetMeta(0)?.data?.[idx];
+    if (!el || !Number.isFinite(el.x)) return false;
+    const isBar = chart.config?.type === 'bar';
+    let anchorY = Number.isFinite(el.y) ? el.y : (chart.chartArea?.top ?? 0);
+    if (isBar && Number.isFinite(el.base)) {
+      anchorY = Math.min(el.y, el.base);
+    }
+    const pad = isBar ? 10 : 8;
+    return {
+      x: el.x,
+      y: anchorY - pad,
+      yAlign: 'bottom'
+    };
+  };
+}
+
 const sharedCartesianChartStyle = {
   layout:{padding:{top:28,right:40,bottom:12,left:40}},
   scales:{
@@ -1450,20 +1472,85 @@ function eventXYInChartPixels(chart, nativeEvt){
   };
 }
 
+function getNearestElementIndex(chart, evt, intersect){
+  if (!chart?.getElementsAtEventForMode || !evt) return null;
+  const candidates = [evt, evt.native].filter((e, i, a) => e && a.indexOf(e) === i);
+  const modeOpts = [
+    ['nearest', { intersect }],
+    ['index', { intersect: false }]
+  ];
+  const useFinal = [false, true];
+  for (const ufp of useFinal) {
+    for (const [mode, opts] of modeOpts) {
+      for (const e of candidates) {
+        try {
+          const hits = chart.getElementsAtEventForMode(e, mode, opts, ufp);
+          if (hits && hits.length) return hits[0].index;
+        } catch (_err) {}
+      }
+    }
+  }
+  return null;
+}
+
+function clampDataIndex(idx, labelCount){
+  if (!Number.isFinite(idx) || labelCount < 1) return null;
+  const max = labelCount - 1;
+  const n = Math.round(Number(idx));
+  return Math.max(0, Math.min(max, n));
+}
+
+/** Bar charts: index from pointer x vs bar centers. Fixes long x labels / right edge where Chart.js `elements` can be one category left of the bar under the cursor. */
+function nearestBarIndexByPixelX(chart, evt){
+  if (chart?.config?.type !== 'bar') return null;
+  const native = evt?.native;
+  const labels = chart?.data?.labels || [];
+  const labelCount = labels.length;
+  if (!native || !labelCount) return null;
+  const area = chart.chartArea;
+  if (!area) return null;
+  const pos = eventXYInChartPixels(chart, native);
+  if (!pos) return null;
+  const xUse = Math.min(Math.max(pos.x, area.left), area.right);
+  const meta = chart.getDatasetMeta(0);
+  const points = meta?.data || [];
+  const n = Math.max(points.length, labelCount);
+  let nearestIdx = null;
+  let nearestDist = Infinity;
+  for (let i = 0; i < n; i++) {
+    let px = points[i]?.x;
+    if (!Number.isFinite(px)) px = guideLineXFromChart(chart, i);
+    if (!Number.isFinite(px)) continue;
+    const d = Math.abs(px - xUse);
+    if (d < nearestDist) {
+      nearestDist = d;
+      nearestIdx = i;
+    }
+  }
+  return nearestIdx != null ? clampDataIndex(nearestIdx, labelCount) : null;
+}
+
 function resolveHoverIndexFromEvent(chart, evt, elements){
-  if (elements && elements.length) return elements[0].index;
   const native = evt?.native;
   const chartType = chart?.config?.type;
+  const labels = chart?.data?.labels || [];
+  const labelCount = labels.length;
   if (chartType === 'doughnut' || chartType === 'pie' || chartType === 'polarArea'){
-    if (!native || !chart?.getElementsAtEventForMode) return null;
-    try {
-      const strict = chart.getElementsAtEventForMode(native, 'nearest', { intersect: true }, false);
-      if (strict && strict.length) return strict[0].index;
-    } catch (_e) {}
-    return null;
+    const idx = getNearestElementIndex(chart, evt, true);
+    return idx != null && labelCount ? clampDataIndex(idx, labelCount) : idx;
+  }
+  if (chartType === 'bar' || chartType === 'line') {
+    if (chartType === 'bar') {
+      const byBarPx = nearestBarIndexByPixelX(chart, evt);
+      if (byBarPx != null) return byBarPx;
+    }
+    if (elements && elements.length && labelCount) return clampDataIndex(elements[0].index, labelCount);
+    const fromNearest = getNearestElementIndex(chart, evt, false);
+    if (fromNearest != null && labelCount) return clampDataIndex(fromNearest, labelCount);
+  } else if (elements && elements.length && labelCount) {
+    return clampDataIndex(elements[0].index, labelCount);
   }
   const xScale = chart?.scales?.x;
-  const labels = chart?.data?.labels || [];
   if (!native || !xScale || !labels.length) return null;
   const area = chart.chartArea;
   if (!area) return null;
@@ -1471,8 +1558,9 @@ function resolveHoverIndexFromEvent(chart, evt, elements){
   if (!pos) return null;
   const x = pos.x;
   const edgeSlack = Math.max(56, (area.right - area.left) * 0.08);
-  if (x < area.left - edgeSlack || x > area.right + edgeSlack) return null;
-  const raw = xScale.getValueForPixel(x);
+  if (x < area.left - edgeSlack) return null;
+  const xUse = Math.min(Math.max(x, area.left), area.right);
+  const raw = xScale.getValueForPixel(xUse);
   if (raw == null) {
     const meta = chart.getDatasetMeta(0);
     const points = meta?.data || [];
@@ -1484,17 +1572,16 @@ function resolveHoverIndexFromEvent(chart, evt, elements){
       let px = points[i]?.x;
       if (!Number.isFinite(px)) px = guideLineXFromChart(chart, i);
       if (!Number.isFinite(px)) continue;
-      const d = Math.abs(px - x);
+      const d = Math.abs(px - xUse);
       if (d < nearestDist) {
         nearestDist = d;
         nearestIdx = i;
       }
     }
-    return nearestIdx;
+    return nearestIdx != null ? clampDataIndex(nearestIdx, labels.length) : null;
   }
   if (typeof raw === 'number' && Number.isFinite(raw)) {
-    const idx = Math.round(raw);
-    return idx >= 0 && idx < labels.length ? idx : null;
+    return clampDataIndex(raw, labels.length);
   }
   const idxFromLabel = labels.findIndex(label => String(label) === String(raw));
   return idxFromLabel >= 0 ? idxFromLabel : null;
@@ -1504,12 +1591,6 @@ function renderRankingTabCharts(mode){
   if (!appState.results) return;
   const results = getActiveResults();
   appState.rankingsMode = mode || 'store';
-  const commonLabelOpts = {
-    responsive:true,
-    maintainAspectRatio:false,
-    ...sharedCartesianChartStyle,
-    plugins: sharedRankingBarPlugins
-  };
 
   if (appState.charts.rankingsLine) appState.charts.rankingsLine.destroy();
   if (appState.charts.rankingsBar) appState.charts.rankingsBar.destroy();
@@ -1554,6 +1635,32 @@ function renderRankingTabCharts(mode){
     title2 = 'Average Ticket Comparison';
   }
 
+  const commonLabelOpts = {
+    responsive:true,
+    maintainAspectRatio:false,
+    ...sharedCartesianChartStyle,
+    plugins: {
+      ...sharedRankingBarPlugins,
+      tooltip: {
+        position: 'rankingsSynced',
+        callbacks: {
+          title: (tooltipItems) => {
+            const di = Number.isInteger(appState.rankingsHoverIndex)
+              ? appState.rankingsHoverIndex
+              : (tooltipItems[0]?.dataIndex ?? 0);
+            return String(labels[di] ?? '');
+          },
+          label: (ctx) => {
+            const di = Number.isInteger(appState.rankingsHoverIndex) ? appState.rankingsHoverIndex : ctx.dataIndex;
+            const v = values[di];
+            const lab = ctx.dataset?.label || '';
+            return lab ? lab + ': ' + fmtCurrency(v) : fmtCurrency(v);
+          }
+        }
+      }
+    }
+  };
+
   const leftTitle = document.querySelector('#rankings .grid-2 .card:first-child .section-title');
   const rightTitle = document.querySelector('#rankings .grid-2 .card:last-child .section-title');
   if (leftTitle) leftTitle.textContent = title1;
@@ -1570,7 +1677,7 @@ function renderRankingTabCharts(mode){
     renderMiniList(miniConfig.elId, rows, miniConfig.keyField, miniConfig.valueField, fmtCurrency, 0);
   }
   const basePalette = getChartPalette(values.length);
-  const applyRankingHover = (hoverIndex, sourceChart) => {
+  const applyRankingHover = (hoverIndex, sourceChart, pointerEvt) => {
     appState.rankingsHoverIndex = hoverIndex;
     const lineChart = appState.charts.rankingsLine;
     const barChart = appState.charts.rankingsBar;
@@ -1596,27 +1703,22 @@ function renderRankingTabCharts(mode){
     if (idx != null) {
       const linePoint = lineChart.getDatasetMeta(0)?.data?.[idx];
       const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
+      const evtForTooltip = pointerEvt?.native || pointerEvt;
       if (linePoint) {
         lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (sourceChart === 'line') {
-          lineChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], { x: linePoint.x, y: linePoint.y });
-        } else {
-          lineChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
-        }
+        if (sourceChart === 'line') lineChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], evtForTooltip);
+        else lineChart.tooltip?.setActiveElements([]);
       }
       if (barPoint) {
         barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (sourceChart === 'bar') {
-          barChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], { x: barPoint.x, y: barPoint.y });
-        } else {
-          barChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
-        }
+        if (sourceChart === 'bar') barChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], evtForTooltip);
+        else barChart.tooltip?.setActiveElements([]);
       }
     } else {
       lineChart.setActiveElements([]);
-      lineChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      lineChart.tooltip?.setActiveElements([]);
       barChart.setActiveElements([]);
-      barChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      barChart.tooltip?.setActiveElements([]);
     }
     lineChart.draw();
     barChart.draw();
@@ -1626,7 +1728,7 @@ function renderRankingTabCharts(mode){
     if (idx != null) clearHoverTimer('rankings');
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.rankingsHoverIndex === idx) return;
-    applyRankingHover(idx, sourceChart);
+    applyRankingHover(idx, sourceChart, evt);
   };
 
   appState.charts.rankingsLine = new Chart(document.getElementById('rankingsLineChart'), {
@@ -1662,27 +1764,6 @@ function renderMembersTabCharts(mode){
   if (!appState.results) return;
   const results = getActiveResults();
   appState.membersMode = mode || 'spend';
-  const commonLabelOpts = {
-    responsive:true,
-    maintainAspectRatio:false,
-    layout:{padding:{top:28,right:40,bottom:12,left:40}},
-    scales:{
-      x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
-      y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
-    },
-    plugins:{
-      legend:{display:false,labels:{boxWidth:28,padding:16}},
-      datalabels:{
-        anchor:'end',
-        align:'end',
-        clamp:true,
-        clip:false,
-        offset:4,
-        formatter:(value)=>shortNumber(value),
-        font:{weight:'600',size:11},color:'#4b5563'
-      }
-    }
-  };
 
   if (appState.charts.membersLine) appState.charts.membersLine.destroy();
   if (appState.charts.membersBar) appState.charts.membersBar.destroy();
@@ -1719,6 +1800,45 @@ function renderMembersTabCharts(mode){
     rightLabel = 'Repurchase Times';
   }
 
+  const commonLabelOpts = {
+    responsive:true,
+    maintainAspectRatio:false,
+    layout:{padding:{top:28,right:40,bottom:12,left:40}},
+    scales:{
+      x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+      y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
+    },
+    plugins:{
+      legend:{display:false,labels:{boxWidth:28,padding:16}},
+      datalabels:{
+        anchor:'end',
+        align:'end',
+        clamp:true,
+        clip:false,
+        offset:4,
+        formatter:(value)=>shortNumber(value),
+        font:{weight:'600',size:11},color:'#4b5563'
+      },
+      tooltip: {
+        callbacks: {
+          title: (tooltipItems) => {
+            const di = Number.isInteger(appState.membersHoverIndex)
+              ? appState.membersHoverIndex
+              : (tooltipItems[0]?.dataIndex ?? 0);
+            return String(labels[di] ?? '');
+          },
+          label: (ctx) => {
+            const di = Number.isInteger(appState.membersHoverIndex) ? appState.membersHoverIndex : ctx.dataIndex;
+            const v = leftData[di];
+            const lab = ctx.dataset?.label || '';
+            const fmtVal = mode === 'repurchase' ? fmtInt : fmtCurrency;
+            return lab ? lab + ': ' + fmtVal(v) : fmtVal(v);
+          }
+        }
+      }
+    }
+  };
+
   const leftTitleEl = document.querySelector('#members .grid-2 .card:first-child .section-title');
   const rightTitleEl = document.querySelector('#members .grid-2 .card:last-child .section-title');
   if (leftTitleEl) leftTitleEl.textContent = leftTitle;
@@ -1749,17 +1869,19 @@ function renderMembersTabCharts(mode){
       const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
       if (linePoint) {
         lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        lineChart.tooltip?.setActiveElements(sourceChart === 'line' ? [{ datasetIndex: 0, index: idx }] : [], { x: linePoint.x, y: linePoint.y });
+        if (sourceChart === 'line') lineChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        else lineChart.tooltip?.setActiveElements([]);
       }
       if (barPoint) {
         barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        barChart.tooltip?.setActiveElements(sourceChart === 'bar' ? [{ datasetIndex: 0, index: idx }] : [], { x: barPoint.x, y: barPoint.y });
+        if (sourceChart === 'bar') barChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        else barChart.tooltip?.setActiveElements([]);
       }
     } else {
       lineChart.setActiveElements([]);
-      lineChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      lineChart.tooltip?.setActiveElements([]);
       barChart.setActiveElements([]);
-      barChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      barChart.tooltip?.setActiveElements([]);
     }
     lineChart.draw();
     barChart.draw();
@@ -1806,27 +1928,6 @@ function renderSleepingTabCharts(mode){
   if (!appState.results) return;
   const results = getActiveResults();
   appState.sleepingMode = mode || 'store';
-  const commonLabelOpts = {
-    responsive:true,
-    maintainAspectRatio:false,
-    layout:{padding:{top:28,right:40,bottom:12,left:40}},
-    scales:{
-      x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
-      y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
-    },
-    plugins:{
-      legend:{display:false,labels:{boxWidth:28,padding:16}},
-      datalabels:{
-        anchor:'end',
-        align:'end',
-        clamp:true,
-        clip:false,
-        offset:4,
-        formatter:(value)=>shortNumber(value),
-        font:{weight:'600',size:11},color:'#4b5563'
-      }
-    }
-  };
 
   if (appState.charts.sleepingLine) appState.charts.sleepingLine.destroy();
   if (appState.charts.sleepingBar) appState.charts.sleepingBar.destroy();
@@ -1868,6 +1969,48 @@ function renderSleepingTabCharts(mode){
     rightTitle = 'Sleeping Member Sleep Days';
   }
 
+  const commonLabelOpts = {
+    responsive:true,
+    maintainAspectRatio:false,
+    layout:{padding:{top:28,right:40,bottom:12,left:40}},
+    scales:{
+      x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
+      y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
+    },
+    plugins:{
+      legend:{display:false,labels:{boxWidth:28,padding:16}},
+      datalabels:{
+        anchor:'end',
+        align:'end',
+        clamp:true,
+        clip:false,
+        offset:4,
+        formatter:(value)=>shortNumber(value),
+        font:{weight:'600',size:11},color:'#4b5563'
+      },
+      tooltip: {
+        callbacks: {
+          title: (tooltipItems) => {
+            const di = Number.isInteger(appState.sleepingHoverIndex)
+              ? appState.sleepingHoverIndex
+              : (tooltipItems[0]?.dataIndex ?? 0);
+            return String(labels[di] ?? '');
+          },
+          label: (ctx) => {
+            const di = Number.isInteger(appState.sleepingHoverIndex) ? appState.sleepingHoverIndex : ctx.dataIndex;
+            const useLeft = ctx.dataset.label === leftLabel;
+            const v = useLeft ? leftData[di] : rightData[di];
+            const lab = ctx.dataset?.label || '';
+            const fmtVal = (!mode || mode === 'store')
+              ? (useLeft ? fmtInt : fmtCurrency)
+              : (useLeft ? fmtCurrency : fmtInt);
+            return lab ? lab + ': ' + fmtVal(v) : fmtVal(v);
+          }
+        }
+      }
+    }
+  };
+
   const leftTitleEl = document.querySelector('#sleeping .grid-2 .card:first-child .section-title');
   const rightTitleEl = document.querySelector('#sleeping .grid-2 .card:last-child .section-title');
   if (leftTitleEl) leftTitleEl.textContent = leftTitle;
@@ -1897,17 +2040,19 @@ function renderSleepingTabCharts(mode){
       const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
       if (linePoint) {
         lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        lineChart.tooltip?.setActiveElements(sourceChart === 'line' ? [{ datasetIndex: 0, index: idx }] : [], { x: linePoint.x, y: linePoint.y });
+        if (sourceChart === 'line') lineChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        else lineChart.tooltip?.setActiveElements([]);
       }
       if (barPoint) {
         barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        barChart.tooltip?.setActiveElements(sourceChart === 'bar' ? [{ datasetIndex: 0, index: idx }] : [], { x: barPoint.x, y: barPoint.y });
+        if (sourceChart === 'bar') barChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        else barChart.tooltip?.setActiveElements([]);
       }
     } else {
       lineChart.setActiveElements([]);
-      lineChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      lineChart.tooltip?.setActiveElements([]);
       barChart.setActiveElements([]);
-      barChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      barChart.tooltip?.setActiveElements([]);
     }
     lineChart.draw();
     barChart.draw();
@@ -1934,15 +2079,9 @@ function renderSleepingTabCharts(mode){
       type:'line',
       data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}] },
       options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        layout:{padding:{top:28,right:40,bottom:12,left:40}},
-        scales:{
-          x:{offset:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:22,minRotation:0,padding:8,color:'#55627a',font:{size:11}}},
-          y:{beginAtZero:false, grace:'2%', grid:{color:'rgba(17,24,39,0.10)'}, border:{display:true, color:'rgba(17,24,39,0.18)'}, ticks:{padding:8,color:'#55627a',font:{size:11}}}
-        },
+        ...commonLabelOpts,
         plugins:{
-          legend:{display:false,labels:{boxWidth:28,padding:16}},
+          ...commonLabelOpts.plugins,
           datalabels:{
             align:'top',
             anchor:'end',
@@ -1952,8 +2091,7 @@ function renderSleepingTabCharts(mode){
             formatter:(value)=>shortNumber(value),
             font:{weight:'600',size:11},color:'#4b5563'
           }
-        }
-        ,
+        },
         interaction:{mode:'index', intersect:false},
         onHover:(evt, elements) => handleSleepingHover(evt, elements, 'line')
       }
@@ -2142,20 +2280,20 @@ function applyDashboardShareSelection(rows, labelKey, valueKey, leftTitleEl, bas
     const rightPoint = rightChart?.getDatasetMeta(0)?.data?.[hoverIdx];
     if (leftPoint) {
       leftChart.setActiveElements([{ datasetIndex: 0, index: hoverIdx }]);
-      if (appState.dashboardShareHoverSource === 'left') leftChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: hoverIdx }], { x: leftPoint.x, y: leftPoint.y });
-      else leftChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      if (appState.dashboardShareHoverSource === 'left') leftChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: hoverIdx }]);
+      else leftChart.tooltip?.setActiveElements([]);
     }
     if (rightChart && rightPoint) {
       rightChart.setActiveElements([{ datasetIndex: 0, index: hoverIdx }]);
-      if (appState.dashboardShareHoverSource === 'right') rightChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: hoverIdx }], { x: rightPoint.x, y: rightPoint.y });
-      else rightChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      if (appState.dashboardShareHoverSource === 'right') rightChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: hoverIdx }]);
+      else rightChart.tooltip?.setActiveElements([]);
     }
   } else {
     leftChart.setActiveElements([]);
-    leftChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    leftChart.tooltip?.setActiveElements([]);
     if (rightChart) {
       rightChart.setActiveElements([]);
-      rightChart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      rightChart.tooltip?.setActiveElements([]);
     }
   }
   leftChart.draw();
