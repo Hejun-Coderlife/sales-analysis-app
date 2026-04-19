@@ -2331,12 +2331,14 @@ function hideDuplicateRankingCards(){
 function renderResults(results, mappings){
   document.getElementById('resultArea').classList.remove('hidden');
 
-  // default dashboard date range from data
+  // Evaluation time: always reset to min/max transaction dates in this upload (avoids stale range after new Excel).
   const datedRows = (appState.results?.originalCleaned || []).filter(r => r.date).sort((a,b)=>(a.date?.getTime?.()||0)-(b.date?.getTime?.()||0));
   const startInput = document.getElementById('dashboardStartDate');
   const endInput = document.getElementById('dashboardEndDate');
-  if (startInput && !startInput.value && datedRows.length) startInput.value = ymd(datedRows[0].date);
-  if (endInput && !endInput.value && results.sleepSummary?.[0]?.value) endInput.value = results.sleepSummary[0].value;
+  if (datedRows.length) {
+    if (startInput) startInput.value = ymd(datedRows[0].date);
+    if (endInput) endInput.value = ymd(datedRows[datedRows.length - 1].date);
+  }
 
   updateDateRangeTriggerText();
   populateDashboardStoreOptions();
