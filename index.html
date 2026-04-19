@@ -2049,7 +2049,12 @@ function applyDashboardShareSelection(rows, labelKey, valueKey, leftTitleEl, bas
     products: { elId:'topProducts', keyField:'product', valueField:'sales_amount' }
   }[mode];
   if (miniConfig) {
-    const pickedRows = hoverIdx != null && rows[hoverIdx] ? [rows[hoverIdx]] : rows;
+    const filteredResults = getActiveResults();
+    let fullListForMini = [];
+    if (mode === 'stores') fullListForMini = filteredResults?.storeRank || [];
+    else if (mode === 'salespeople') fullListForMini = filteredResults?.salespersonRank || [];
+    else if (mode === 'products') fullListForMini = filteredResults?.productRank || [];
+    const pickedRows = hoverIdx != null && fullListForMini[hoverIdx] != null ? [fullListForMini[hoverIdx]] : fullListForMini;
     renderMiniList(miniConfig.elId, pickedRows, miniConfig.keyField, miniConfig.valueField, fmtCurrency, hoverIdx != null ? hoverIdx : 0);
   }
 }
