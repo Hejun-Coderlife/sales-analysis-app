@@ -2549,32 +2549,75 @@ function updateDashboardCharts(mode){
       }
     });
 
-    setDownloadTarget('dashboard_results.xlsx', [{ name: useDaily ? 'Daily Sales' : 'Monthly Sales', rows: trendRows }, { name:'Repurchase Structure', rows: results.repurchaseDistribution || [] }]);
+    const REPURCHASE_BUCKET_ORDER = ['6+ orders', '4-5 orders', '3 orders', '2 orders', '1 order'];
+    const repurchaseByBucket = Object.fromEntries((results.repurchaseDistribution || []).map(x => [x.order_bucket, x.member_count]));
+    const repurchaseLabels = REPURCHASE_BUCKET_ORDER;
+    const repurchaseCounts = REPURCHASE_BUCKET_ORDER.map(k => Number(repurchaseByBucket[k]) || 0);
+    const repurchaseSheetRows = REPURCHASE_BUCKET_ORDER.map(k => ({ order_bucket: k, member_count: Number(repurchaseByBucket[k]) || 0 }));
+    const repPalette = getChartPalette(repurchaseLabels.length);
+
+    setDownloadTarget('dashboard_results.xlsx', [{ name: useDaily ? 'Daily Sales' : 'Monthly Sales', rows: trendRows }, { name:'Repurchase Structure', rows: repurchaseSheetRows }]);
     clearActiveGlows();
     appState.charts.repurchase = new Chart(document.getElementById('repurchaseChart'), {
-      type:'bar',
-      data:{ labels:results.repurchaseDistribution.map(x=>x.order_bucket), datasets:[{label:'Members', data:results.repurchaseDistribution.map(x=>x.member_count), borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(results.repurchaseDistribution.length).bg, borderColor:getChartPalette(results.repurchaseDistribution.length).border, borderWidth:0}] },
+      type:'doughnut',
+      data:{
+        labels: repurchaseLabels,
+        datasets:[{
+          label:'Members',
+          data: repurchaseCounts,
+          borderRadius:2,
+          spacing:0,
+          hoverOffset:12,
+          hoverBackgroundColor: hoverBackgroundColorsFrom(repPalette.bg),
+          cutout:'52%',
+          backgroundColor: repPalette.bg,
+          borderColor: repPalette.border,
+          borderWidth:0
+        }]
+      },
       options:{
         responsive:true,
         maintainAspectRatio:false,
-        interaction:{mode:'index', intersect:false},
+        layout: sharedCartesianChartStyle.layout,
+        interaction:{ mode:'nearest', intersect:true },
         onHover:(evt, elements) => {
           const idx = resolveHoverIndexFromEvent(appState.charts.repurchase, evt, elements);
           if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
         },
         plugins:{
           legend:{ display:false },
+          tooltip:{
+            callbacks:{
+              title:(items)=>{
+                if (!items.length) return '';
+                const idx = items[0].dataIndex;
+                return repurchaseLabels[idx] || '';
+              },
+              label:(ctx)=>{
+                const v = ctx.parsed != null ? ctx.parsed : ctx.raw;
+                const n = Number(v);
+                return 'Members: ' + fmtInt(Number.isFinite(n) ? n : 0);
+              }
+            }
+          },
           datalabels:{
-            anchor:'end',
-            align:'end',
-            clamp:true,
-            clip:false,
-            offset:2,
-            formatter:(value)=>shortNumber(value),
-            color:'#111827',
+            formatter:(value, ctx)=>{
+              const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+Number(b||0),0);
+              const pct = total ? (value/total*100) : 0;
+              return shortNumber(value) + ' (' + pct.toFixed(1) + '%)';
+            },
+            color:'#4b5563',
             font:{ weight:'600', size:11 }
           }
-        }
+        },
+        elements:{
+          arc:{
+            borderJoinStyle:'round',
+            borderWidth:0,
+            hoverBorderWidth:0
+          }
+        },
+        animation:false
       }
     });
     return;
