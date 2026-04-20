@@ -6,8 +6,8 @@
   <title>Sales Analysis App</title>
   <link rel="icon" type="image/png" href="./favicon.png" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
   <style>
     :root{
@@ -1791,52 +1791,55 @@ function renderRankingTabCharts(mode){
   const basePalette = getChartPalette(values.length);
   const applyRankingHover = (hoverIndex, sourceChart, pointerEvt) => {
     appState.rankingsHoverIndex = hoverIndex;
-    const lineChart = appState.charts.rankingsLine;
-    const barChart = appState.charts.rankingsBar;
-    if (!lineChart || !barChart) return;
+    const leftChart = appState.charts.rankingsLine;
+    const rightChart = appState.charts.rankingsBar;
+    if (!leftChart || !rightChart) return;
     const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
-    lineChart.data.datasets[0].pointRadius = values.map((_, i) => idx == null ? 3 : (i === idx ? 5 : 3));
-    lineChart.data.datasets[0].pointHoverRadius = values.map((_, i) => idx == null ? 4 : (i === idx ? 6 : 3));
-    lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
-    lineChart.data.datasets[0].pointBackgroundColor = values.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
-    lineChart.data.datasets[0].pointBorderColor = values.map(() => 'rgba(0,0,0,0)');
-    lineChart.data.datasets[0].pointBorderWidth = values.map(() => 0);
-    barChart.data.datasets[0].backgroundColor = values.map((_, i) => basePalette.bg[i]);
-    barChart.data.datasets[0].borderColor = values.map((_, i) => basePalette.border[i]);
-    barChart.data.datasets[0].borderWidth = 0;
+
+    leftChart.data.datasets[0].backgroundColor = values.map((_, i) => basePalette.bg[i]);
+    leftChart.data.datasets[0].borderColor = values.map((_, i) => basePalette.border[i]);
+    leftChart.data.datasets[0].borderWidth = 0;
+
+    rightChart.data.datasets[0].backgroundColor = values.map((_, i) => basePalette.bg[i]);
+    rightChart.data.datasets[0].borderColor = values.map((_, i) => basePalette.border[i]);
+    rightChart.data.datasets[0].borderWidth = 0;
+    rightChart.data.datasets[0].hoverOffset = 12;
+    rightChart.data.datasets[0].hoverBackgroundColor = hoverBackgroundColorsFrom(values.map((_, i) => basePalette.bg[i]));
+
     if (leftTitle) leftTitle.textContent = idx != null ? (title1 + ' (Hover: ' + labels[idx] + ')') : title1;
     if (rightTitle) rightTitle.textContent = idx != null ? (title2 + ' (Hover: ' + labels[idx] + ')') : title2;
     if (miniConfig) {
       const miniRows = idx != null && rows[idx] ? [rows[idx]] : rows;
       renderMiniList(miniConfig.elId, miniRows, miniConfig.keyField, miniConfig.valueField, fmtCurrency, idx != null ? idx : 0);
     }
-    lineChart.update('none');
-    barChart.update('none');
+
+    leftChart.update('none');
+    rightChart.update('none');
     if (idx != null) {
-      const linePoint = lineChart.getDatasetMeta(0)?.data?.[idx];
-      const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
+      const leftPoint = leftChart.getDatasetMeta(0)?.data?.[idx];
+      const rightPoint = rightChart.getDatasetMeta(0)?.data?.[idx];
       const evtForTooltip = pointerEvt?.native || pointerEvt;
-      if (linePoint) {
-        lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (sourceChart === 'line') lineChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], evtForTooltip);
-        else lineChart.tooltip?.setActiveElements([]);
+      if (leftPoint) {
+        leftChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (sourceChart === 'left') leftChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], evtForTooltip);
+        else leftChart.tooltip?.setActiveElements([]);
       }
-      if (barPoint) {
-        barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (sourceChart === 'bar') barChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], evtForTooltip);
-        else barChart.tooltip?.setActiveElements([]);
+      if (rightPoint) {
+        rightChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (sourceChart === 'right') rightChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }], evtForTooltip);
+        else rightChart.tooltip?.setActiveElements([]);
       }
     } else {
-      lineChart.setActiveElements([]);
-      lineChart.tooltip?.setActiveElements([]);
-      barChart.setActiveElements([]);
-      barChart.tooltip?.setActiveElements([]);
+      leftChart.setActiveElements([]);
+      leftChart.tooltip?.setActiveElements([]);
+      rightChart.setActiveElements([]);
+      rightChart.tooltip?.setActiveElements([]);
     }
-    lineChart.draw();
-    barChart.draw();
+    leftChart.draw();
+    rightChart.draw();
   };
   const handleHover = (evt, elements, sourceChart) => {
-    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.rankingsLine : appState.charts.rankingsBar, evt, elements);
+    const idx = resolveHoverIndexFromEvent(sourceChart === 'left' ? appState.charts.rankingsLine : appState.charts.rankingsBar, evt, elements);
     if (idx != null) clearHoverTimer('rankings');
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.rankingsHoverIndex === idx) return;
@@ -1844,31 +1847,72 @@ function renderRankingTabCharts(mode){
   };
 
   appState.charts.rankingsLine = new Chart(document.getElementById('rankingsLineChart'), {
-    type:'line',
-    data:{
-      labels: labels,
-      datasets:[{label:title1, data: values, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}]
-    },
-    options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleHover(evt, elements, 'line') }
-  });
-
-  appState.charts.rankingsBar = new Chart(document.getElementById('rankingsBarChart'), {
     type:'bar',
     data:{
       labels: labels,
-      datasets:[{label:title2, data: values, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(values.length).bg, borderColor:getChartPalette(values.length).border, borderWidth:0}]
+      datasets:[{label:title1, data: values, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:basePalette.bg, borderColor:basePalette.border, borderWidth:0}]
     },
-    options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleHover(evt, elements, 'bar') }
+    options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleHover(evt, elements, 'left') }
+  });
+
+  appState.charts.rankingsBar = new Chart(document.getElementById('rankingsBarChart'), {
+    type:'doughnut',
+    data:{
+      labels: labels,
+      datasets:[{label:title2, data: values, borderRadius:2, spacing:0, hoverOffset:12, hoverBackgroundColor:hoverBackgroundColorsFrom(basePalette.bg), cutout:'52%', backgroundColor:basePalette.bg, borderColor:basePalette.border, borderWidth:0}]
+    },
+    options: {
+      responsive:true,
+      maintainAspectRatio:false,
+      layout: sharedCartesianChartStyle.layout,
+      interaction:{mode:'nearest', intersect:true},
+      onHover: (evt, elements) => handleHover(evt, elements, 'right'),
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:(items)=>{
+              if (!items.length) return '';
+              const di = Number.isInteger(appState.rankingsHoverIndex) ? appState.rankingsHoverIndex : (items[0]?.dataIndex ?? 0);
+              return String(labels[di] ?? '');
+            },
+            label:(ctx)=>{
+              const di = Number.isInteger(appState.rankingsHoverIndex) ? appState.rankingsHoverIndex : ctx.dataIndex;
+              const v = values[di];
+              const lab = ctx.dataset?.label || '';
+              return lab ? lab + ': ' + fmtCurrency(v) : fmtCurrency(v);
+            }
+          }
+        },
+        datalabels:{
+          formatter:(value, ctx)=>{
+            const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+Number(b||0),0);
+            const pct = total ? (value/total*100) : 0;
+            return shortNumber(value) + ' (' + pct.toFixed(1) + '%)';
+          },
+          color:'#4b5563',
+          font:{weight:'600',size:11}
+        }
+      },
+      elements:{
+        arc:{
+          borderJoinStyle:'round',
+          borderWidth:0,
+          hoverBorderWidth:0
+        }
+      },
+      animation:false
+    }
   });
   const clearRankingHover = (sourceChart) => {
     if (appState.rankingsHoverIndex == null) return;
     scheduleHoverClear('rankings', () => applyRankingHover(null, sourceChart));
   };
   if (appState.charts.rankingsLine?.canvas) {
-    appState.charts.rankingsLine.canvas.onmouseleave = () => clearRankingHover('line');
+    appState.charts.rankingsLine.canvas.onmouseleave = () => clearRankingHover('left');
   }
   if (appState.charts.rankingsBar?.canvas) {
-    appState.charts.rankingsBar.canvas.onmouseleave = () => clearRankingHover('bar');
+    appState.charts.rankingsBar.canvas.onmouseleave = () => clearRankingHover('right');
   }
 }
 
@@ -1959,50 +2003,50 @@ function renderMembersTabCharts(mode){
   const memberPalette = getChartPalette(rightData.length);
 
   const applyMembersHover = (hoverIndex, sourceChart) => {
-    const lineChart = appState.charts.membersLine;
-    const barChart = appState.charts.membersBar;
-    if (!lineChart || !barChart) return;
+    const leftChart = appState.charts.membersLine;
+    const rightChart = appState.charts.membersBar;
+    if (!leftChart || !rightChart) return;
     const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
     appState.membersHoverIndex = idx;
-    lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
-    lineChart.data.datasets[0].pointRadius = rightData.map((_, i) => idx == null ? 3 : (i === idx ? 5 : 3));
-    lineChart.data.datasets[0].pointHoverRadius = rightData.map((_, i) => idx == null ? 4 : (i === idx ? 6 : 3));
-    lineChart.data.datasets[0].pointBorderWidth = rightData.map(() => 0);
-    lineChart.data.datasets[0].pointBackgroundColor = rightData.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
-    barChart.data.datasets[0].backgroundColor = rightData.map((_, i) => memberPalette.bg[i]);
-    barChart.data.datasets[0].borderColor = rightData.map((_, i) => memberPalette.border[i]);
-    barChart.data.datasets[0].borderWidth = 0;
+    leftChart.data.datasets[0].backgroundColor = rightData.map((_, i) => memberPalette.bg[i]);
+    leftChart.data.datasets[0].borderColor = rightData.map((_, i) => memberPalette.border[i]);
+    leftChart.data.datasets[0].borderWidth = 0;
+    rightChart.data.datasets[0].backgroundColor = rightData.map((_, i) => memberPalette.bg[i]);
+    rightChart.data.datasets[0].borderColor = rightData.map((_, i) => memberPalette.border[i]);
+    rightChart.data.datasets[0].borderWidth = 0;
+    rightChart.data.datasets[0].hoverOffset = 12;
+    rightChart.data.datasets[0].hoverBackgroundColor = hoverBackgroundColorsFrom(rightData.map((_, i) => memberPalette.bg[i]));
     if (leftTitleEl) leftTitleEl.textContent = idx != null ? (leftTitle + ' (Hover: ' + labels[idx] + ')') : leftTitle;
     if (rightTitleEl) rightTitleEl.textContent = idx != null ? (rightTitle + ' (Hover: ' + labels[idx] + ')') : rightTitle;
-    lineChart.update('none');
-    barChart.update('none');
+    leftChart.update('none');
+    rightChart.update('none');
     if (idx != null) {
-      const linePoint = lineChart.getDatasetMeta(0)?.data?.[idx];
-      const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
-      if (linePoint) {
-        lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (sourceChart === 'line') lineChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        else lineChart.tooltip?.setActiveElements([]);
+      const leftPoint = leftChart.getDatasetMeta(0)?.data?.[idx];
+      const rightPoint = rightChart.getDatasetMeta(0)?.data?.[idx];
+      if (leftPoint) {
+        leftChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (sourceChart === 'left') leftChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        else leftChart.tooltip?.setActiveElements([]);
       }
-      if (barPoint) {
-        barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (sourceChart === 'bar') barChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        else barChart.tooltip?.setActiveElements([]);
+      if (rightPoint) {
+        rightChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (sourceChart === 'right') rightChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        else rightChart.tooltip?.setActiveElements([]);
       }
     } else {
-      lineChart.setActiveElements([]);
-      lineChart.tooltip?.setActiveElements([]);
-      barChart.setActiveElements([]);
-      barChart.tooltip?.setActiveElements([]);
+      leftChart.setActiveElements([]);
+      leftChart.tooltip?.setActiveElements([]);
+      rightChart.setActiveElements([]);
+      rightChart.tooltip?.setActiveElements([]);
     }
-    lineChart.draw();
-    barChart.draw();
+    leftChart.draw();
+    rightChart.draw();
     const memberFmt = {total_spend:fmtCurrency, order_count:fmtInt, last_purchase_date:v=>v?ymd(v):'', avg_ticket:fmtCurrency, repurchase_times:fmtInt};
     const memberTableRows = (idx != null && chartRowsForHover[idx] != null) ? [chartRowsForHover[idx]] : memberRankFullForTable;
     renderTable('memberRankTable', memberTableRows, memberFmt, true);
   };
   const handleMembersHover = (evt, elements, sourceChart) => {
-    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.membersLine : appState.charts.membersBar, evt, elements);
+    const idx = resolveHoverIndexFromEvent(sourceChart === 'left' ? appState.charts.membersLine : appState.charts.membersBar, evt, elements);
     if (idx != null) clearHoverTimer('members');
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.membersHoverIndex === idx) return;
@@ -2011,16 +2055,58 @@ function renderMembersTabCharts(mode){
 
   if (document.getElementById('membersLineChart')){
     appState.charts.membersLine = new Chart(document.getElementById('membersLineChart'), {
-      type:'line',
-      data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}] },
-      options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleMembersHover(evt, elements, 'line') }
+      type:'bar',
+      data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:memberPalette.bg, borderColor:memberPalette.border, borderWidth:0}] },
+      options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleMembersHover(evt, elements, 'left') }
     });
   }
   if (document.getElementById('membersBarChart')){
     appState.charts.membersBar = new Chart(document.getElementById('membersBarChart'), {
-      type:'bar',
-      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:0}] },
-      options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover: (evt, elements) => handleMembersHover(evt, elements, 'bar') }
+      type:'doughnut',
+      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:2, spacing:0, hoverOffset:12, hoverBackgroundColor:hoverBackgroundColorsFrom(memberPalette.bg), cutout:'52%', backgroundColor:memberPalette.bg, borderColor:memberPalette.border, borderWidth:0}] },
+      options: {
+        responsive:true,
+        maintainAspectRatio:false,
+        layout: sharedCartesianChartStyle.layout,
+        interaction:{mode:'nearest', intersect:true},
+        onHover: (evt, elements) => handleMembersHover(evt, elements, 'right'),
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:(items)=>{
+                if (!items.length) return '';
+                const di = Number.isInteger(appState.membersHoverIndex) ? appState.membersHoverIndex : (items[0]?.dataIndex ?? 0);
+                return String(labels[di] ?? '');
+              },
+              label:(ctx)=>{
+                const di = Number.isInteger(appState.membersHoverIndex) ? appState.membersHoverIndex : ctx.dataIndex;
+                const v = rightData[di];
+                const lab = ctx.dataset?.label || '';
+                const fmtVal = mode === 'repurchase' ? fmtInt : fmtCurrency;
+                return lab ? lab + ': ' + fmtVal(v) : fmtVal(v);
+              }
+            }
+          },
+          datalabels:{
+            formatter:(value, ctx)=>{
+              const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+Number(b||0),0);
+              const pct = total ? (value/total*100) : 0;
+              return shortNumber(value) + ' (' + pct.toFixed(1) + '%)';
+            },
+            color:'#4b5563',
+            font:{weight:'600',size:11}
+          }
+        },
+        elements:{
+          arc:{
+            borderJoinStyle:'round',
+            borderWidth:0,
+            hoverBorderWidth:0
+          }
+        },
+        animation:false
+      }
     });
   }
   const clearMembersHover = (sourceChart) => {
@@ -2028,10 +2114,10 @@ function renderMembersTabCharts(mode){
     scheduleHoverClear('members', () => applyMembersHover(null, sourceChart));
   };
   if (appState.charts.membersLine?.canvas) {
-    appState.charts.membersLine.canvas.onmouseleave = () => clearMembersHover('line');
+    appState.charts.membersLine.canvas.onmouseleave = () => clearMembersHover('left');
   }
   if (appState.charts.membersBar?.canvas) {
-    appState.charts.membersBar.canvas.onmouseleave = () => clearMembersHover('bar');
+    appState.charts.membersBar.canvas.onmouseleave = () => clearMembersHover('right');
   }
   renderTable('memberRankTable', memberRankFullForTable, {total_spend:fmtCurrency, order_count:fmtInt, last_purchase_date:v=>v?ymd(v):'', avg_ticket:fmtCurrency, repurchase_times:fmtInt}, true);
 }
@@ -2130,44 +2216,44 @@ function renderSleepingTabCharts(mode){
   appState.sleepingHoverIndex = null;
   const sleepingPalette = getChartPalette(rightData.length);
   const applySleepingHover = (hoverIndex, sourceChart) => {
-    const lineChart = appState.charts.sleepingLine;
-    const barChart = appState.charts.sleepingBar;
-    if (!lineChart || !barChart) return;
+    const leftChart = appState.charts.sleepingLine;
+    const rightChart = appState.charts.sleepingBar;
+    if (!leftChart || !rightChart) return;
     const idx = Number.isInteger(hoverIndex) ? hoverIndex : null;
     appState.sleepingHoverIndex = idx;
-    lineChart.data.datasets[0].borderColor = 'rgba(59,130,246,0.95)';
-    lineChart.data.datasets[0].pointRadius = rightData.map((_, i) => idx == null ? 3 : (i === idx ? 5 : 3));
-    lineChart.data.datasets[0].pointHoverRadius = rightData.map((_, i) => idx == null ? 4 : (i === idx ? 6 : 3));
-    lineChart.data.datasets[0].pointBorderWidth = rightData.map(() => 0);
-    lineChart.data.datasets[0].pointBackgroundColor = rightData.map((_, i) => idx == null ? 'rgba(59,130,246,0.95)' : (i === idx ? 'rgba(37,99,235,1)' : 'rgba(59,130,246,0.95)'));
-    barChart.data.datasets[0].backgroundColor = rightData.map((_, i) => sleepingPalette.bg[i]);
-    barChart.data.datasets[0].borderColor = rightData.map((_, i) => sleepingPalette.border[i]);
-    barChart.data.datasets[0].borderWidth = 0;
+    leftChart.data.datasets[0].backgroundColor = leftData.map((_, i) => sleepingPalette.bg[i]);
+    leftChart.data.datasets[0].borderColor = leftData.map((_, i) => sleepingPalette.border[i]);
+    leftChart.data.datasets[0].borderWidth = 0;
+    rightChart.data.datasets[0].backgroundColor = rightData.map((_, i) => sleepingPalette.bg[i]);
+    rightChart.data.datasets[0].borderColor = rightData.map((_, i) => sleepingPalette.border[i]);
+    rightChart.data.datasets[0].borderWidth = 0;
+    rightChart.data.datasets[0].hoverOffset = 12;
+    rightChart.data.datasets[0].hoverBackgroundColor = hoverBackgroundColorsFrom(rightData.map((_, i) => sleepingPalette.bg[i]));
     if (leftTitleEl) leftTitleEl.textContent = idx != null ? (leftTitle + ' (Hover: ' + labels[idx] + ')') : leftTitle;
     if (rightTitleEl) rightTitleEl.textContent = idx != null ? (rightTitle + ' (Hover: ' + labels[idx] + ')') : rightTitle;
-    lineChart.update('none');
-    barChart.update('none');
+    leftChart.update('none');
+    rightChart.update('none');
     if (idx != null) {
-      const linePoint = lineChart.getDatasetMeta(0)?.data?.[idx];
-      const barPoint = barChart.getDatasetMeta(0)?.data?.[idx];
-      if (linePoint) {
-        lineChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (sourceChart === 'line') lineChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        else lineChart.tooltip?.setActiveElements([]);
+      const leftPoint = leftChart.getDatasetMeta(0)?.data?.[idx];
+      const rightPoint = rightChart.getDatasetMeta(0)?.data?.[idx];
+      if (leftPoint) {
+        leftChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (sourceChart === 'left') leftChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        else leftChart.tooltip?.setActiveElements([]);
       }
-      if (barPoint) {
-        barChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (sourceChart === 'bar') barChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        else barChart.tooltip?.setActiveElements([]);
+      if (rightPoint) {
+        rightChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (sourceChart === 'right') rightChart.tooltip?.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        else rightChart.tooltip?.setActiveElements([]);
       }
     } else {
-      lineChart.setActiveElements([]);
-      lineChart.tooltip?.setActiveElements([]);
-      barChart.setActiveElements([]);
-      barChart.tooltip?.setActiveElements([]);
+      leftChart.setActiveElements([]);
+      leftChart.tooltip?.setActiveElements([]);
+      rightChart.setActiveElements([]);
+      rightChart.tooltip?.setActiveElements([]);
     }
-    lineChart.draw();
-    barChart.draw();
+    leftChart.draw();
+    rightChart.draw();
     if (mode === 'list') {
       const sleepFmt = {total_spend:fmtCurrency, order_count:fmtInt, avg_ticket:fmtCurrency, repurchase_times:fmtInt, sleep_days:fmtInt};
       const tableRows = (idx != null && chartRowsForHover[idx] != null) ? [chartRowsForHover[idx]] : listFullForTable;
@@ -2179,7 +2265,7 @@ function renderSleepingTabCharts(mode){
     }
   };
   const handleSleepingHover = (evt, elements, sourceChart) => {
-    const idx = resolveHoverIndexFromEvent(sourceChart === 'line' ? appState.charts.sleepingLine : appState.charts.sleepingBar, evt, elements);
+    const idx = resolveHoverIndexFromEvent(sourceChart === 'left' ? appState.charts.sleepingLine : appState.charts.sleepingBar, evt, elements);
     if (idx != null) clearHoverTimer('sleeping');
     if (evt?.native?.target) evt.native.target.style.cursor = (elements.length || idx != null) ? 'pointer' : 'default';
     if (appState.sleepingHoverIndex === idx) return;
@@ -2188,32 +2274,62 @@ function renderSleepingTabCharts(mode){
 
   if (document.getElementById('sleepingLineChart')){
     appState.charts.sleepingLine = new Chart(document.getElementById('sleepingLineChart'), {
-      type:'line',
-      data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, tension:0.35, borderWidth:3, pointRadius:3, pointHoverRadius:4, fill:false, clip:false}] },
+      type:'bar',
+      data:{ labels: labels, datasets:[{label:leftLabel, data:leftData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:sleepingPalette.bg, borderColor:sleepingPalette.border, borderWidth:0}] },
       options:{
         ...commonLabelOpts,
-        plugins:{
-          ...commonLabelOpts.plugins,
-          datalabels:{
-            align:'top',
-            anchor:'end',
-            clamp:true,
-            clip:false,
-            offset:4,
-            formatter:(value)=>shortNumber(value),
-            font:{weight:'600',size:11},color:'#4b5563'
-          }
-        },
         interaction:{mode:'index', intersect:false},
-        onHover:(evt, elements) => handleSleepingHover(evt, elements, 'line')
+        onHover:(evt, elements) => handleSleepingHover(evt, elements, 'left')
       }
     });
   }
   if (document.getElementById('sleepingBarChart')){
     appState.charts.sleepingBar = new Chart(document.getElementById('sleepingBarChart'), {
-      type:'bar',
-      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:{topLeft:8,topRight:8,bottomLeft:0,bottomRight:0}, borderSkipped:'bottom', maxBarThickness:40, clip:0, backgroundColor:getChartPalette(rightData.length).bg, borderColor:getChartPalette(rightData.length).border, borderWidth:0}] },
-      options: { ...commonLabelOpts, interaction:{mode:'index', intersect:false}, onHover:(evt, elements) => handleSleepingHover(evt, elements, 'bar') }
+      type:'doughnut',
+      data:{ labels: labels, datasets:[{label:rightLabel, data:rightData, borderRadius:2, spacing:0, hoverOffset:12, hoverBackgroundColor:hoverBackgroundColorsFrom(sleepingPalette.bg), cutout:'52%', backgroundColor:sleepingPalette.bg, borderColor:sleepingPalette.border, borderWidth:0}] },
+      options: {
+        responsive:true,
+        maintainAspectRatio:false,
+        layout: sharedCartesianChartStyle.layout,
+        interaction:{mode:'nearest', intersect:true},
+        onHover:(evt, elements) => handleSleepingHover(evt, elements, 'right'),
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:(items)=>{
+                if (!items.length) return '';
+                const di = Number.isInteger(appState.sleepingHoverIndex) ? appState.sleepingHoverIndex : (items[0]?.dataIndex ?? 0);
+                return String(labels[di] ?? '');
+              },
+              label:(ctx)=>{
+                const di = Number.isInteger(appState.sleepingHoverIndex) ? appState.sleepingHoverIndex : ctx.dataIndex;
+                const v = rightData[di];
+                const lab = ctx.dataset?.label || '';
+                const fmtVal = (!mode || mode === 'store') ? fmtCurrency : fmtInt;
+                return lab ? lab + ': ' + fmtVal(v) : fmtVal(v);
+              }
+            }
+          },
+          datalabels:{
+            formatter:(value, ctx)=>{
+              const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+Number(b||0),0);
+              const pct = total ? (value/total*100) : 0;
+              return shortNumber(value) + ' (' + pct.toFixed(1) + '%)';
+            },
+            color:'#4b5563',
+            font:{weight:'600',size:11}
+          }
+        },
+        elements:{
+          arc:{
+            borderJoinStyle:'round',
+            borderWidth:0,
+            hoverBorderWidth:0
+          }
+        },
+        animation:false
+      }
     });
   }
   const clearSleepingHover = (sourceChart) => {
@@ -2221,10 +2337,10 @@ function renderSleepingTabCharts(mode){
     scheduleHoverClear('sleeping', () => applySleepingHover(null, sourceChart));
   };
   if (appState.charts.sleepingLine?.canvas) {
-    appState.charts.sleepingLine.canvas.onmouseleave = () => clearSleepingHover('line');
+    appState.charts.sleepingLine.canvas.onmouseleave = () => clearSleepingHover('left');
   }
   if (appState.charts.sleepingBar?.canvas) {
-    appState.charts.sleepingBar.canvas.onmouseleave = () => clearSleepingHover('bar');
+    appState.charts.sleepingBar.canvas.onmouseleave = () => clearSleepingHover('right');
   }
   renderTable('sleepByStoreTable', results.sleepByStore || [], {sleeping_members:fmtInt, historical_spend:fmtCurrency}, true);
   refreshSleepingTable(results);
