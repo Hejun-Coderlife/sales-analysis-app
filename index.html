@@ -484,6 +484,9 @@ input[type="date"], select.control-select{
     .hidden{display:none}
     #resultArea{width:100%;margin:0 auto}
     .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#eef3ff;color:#2342ad;font-size:12px;font-weight:700;box-shadow:0 0 8px rgba(118,144,243,.16)}
+    .mini-name-scroll{margin-left:2px;min-width:0;flex:1;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:none;-ms-overflow-style:none}
+    .mini-name-scroll::-webkit-scrollbar{display:none}
+    .mini-name-scroll-track{display:inline-block;padding-right:12px}
     .ok{color:var(--good)}
     .warn{color:var(--warn)}
     
@@ -1506,6 +1509,10 @@ function renderMiniList(elId, rows, keyField, valueField, formatter, rankBase = 
   const el = document.getElementById(elId);
   if (!rows.length){ el.innerHTML = '<p class="small">No data.</p>'; return; }
   const showBelowAveragePercent = !!options.showBelowAveragePercent;
+  const enableNameScroll = !!options.enableNameScroll;
+  const sideMetricField = options.sideMetricField || '';
+  const sideMetricFormatter = typeof options.sideMetricFormatter === 'function' ? options.sideMetricFormatter : (v) => String(v ?? '');
+  const sideMetricLabel = options.sideMetricLabel ? String(options.sideMetricLabel) : '';
   const averageRows = Array.isArray(options.averageRows) && options.averageRows.length ? options.averageRows : rows;
   const avgValues = averageRows
     .map(r => Number(r?.[valueField]))
@@ -1531,14 +1538,22 @@ function renderMiniList(elId, rows, keyField, valueField, formatter, rankBase = 
         : '';
       const nameTitle = escapeHtml(r[keyField]);
       const nameText = escapeHtml(r[keyField]);
+      const nameCell = enableNameScroll
+        ? ('<div class="mini-name-scroll" title="' + nameTitle + '"><span class="mini-name-scroll-track">' + nameText + '</span></div>')
+        : ('<span style="' + nameStyle + '" title="' + nameTitle + '">' + nameText + '</span>');
       const valueColorStyle = isBelowAverage ? ';color:#f87171' : '';
       const percentColorStyle = isBelowAverage ? ';color:#f87171' : ';color:#7a7e84';
       const deltaCell = showBelowAveragePercent
         ? ('<div style="min-width:52px;text-align:right;font-size:12px;font-weight:600;flex-shrink:0' + percentColorStyle + '">' + diffPercentText + '</div>')
         : '';
+      const sideMetricRaw = sideMetricField ? r?.[sideMetricField] : null;
+      const sideMetricCell = sideMetricField
+        ? ('<div style="min-width:84px;text-align:right;font-size:12px;font-weight:600;flex-shrink:0;color:#7a7e84">' + escapeHtml(sideMetricLabel + sideMetricFormatter(sideMetricRaw)) + '</div>')
+        : '';
       return '<div style="' + rowStyle + '">' +
-        '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1"><span class="pill">#' + (rankBase + i + 1) + '</span><span style="' + nameStyle + '" title="' + nameTitle + '">' + nameText + '</span></div>' +
+        '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1"><span class="pill">#' + (rankBase + i + 1) + '</span>' + nameCell + '</div>' +
         '<div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-shrink:0">' +
+        sideMetricCell +
         deltaCell +
         '<div style="font-weight:700;text-align:right' + valueColorStyle + '">' + formatter(r[valueField]) + '</div>' +
         '</div></div>';
@@ -2765,7 +2780,12 @@ function renderAllTablesFromResults(results){
 
   renderMiniList('topStores', results.storeRank || [], 'store', 'performance', fmtCurrency, 0, { showBelowAveragePercent: true });
   renderMiniList('topSalespeople', results.salespersonRank || [], 'salesperson', 'performance', fmtCurrency, 0, { showBelowAveragePercent: true });
-  renderMiniList('topProducts', results.productRank || [], 'product', 'sales_amount', fmtCurrency);
+  renderMiniList('topProducts', results.productRank || [], 'product', 'sales_amount', fmtCurrency, 0, {
+    enableNameScroll: true,
+    sideMetricField: 'sales_qty',
+    sideMetricFormatter: fmtInt,
+    sideMetricLabel: 'Qty '
+  });
 
   renderMiniList('rankingsStoreMini', results.storeRank || [], 'store', 'performance', fmtCurrency);
   renderMiniList('rankingsSalespersonMini', results.salespersonRank || [], 'salesperson', 'performance', fmtCurrency);
@@ -2944,7 +2964,12 @@ function applyDashboardShareSelection(rows, labelKey, valueKey, leftTitleEl, bas
   const miniConfig = {
     stores: { elId:'topStores', keyField:'store', valueField:'performance', options:{ showBelowAveragePercent:true } },
     salespeople: { elId:'topSalespeople', keyField:'salesperson', valueField:'performance', options:{ showBelowAveragePercent:true } },
-    products: { elId:'topProducts', keyField:'product', valueField:'sales_amount' }
+    products: {
+      elId:'topProducts',
+      keyField:'product',
+      valueField:'sales_amount',
+      options:{ enableNameScroll:true, sideMetricField:'sales_qty', sideMetricFormatter:fmtInt, sideMetricLabel:'Qty ' }
+    }
   }[mode];
   if (miniConfig) {
     const filteredResults = getActiveResults();
