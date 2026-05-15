@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>API 冒烟（同源会话）</title>
+    <style>
+      :root {
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        line-height: 1.45;
+        color: #0f172a;
+        background: #f1f5f9;
+      }
+      body {
+        max-width: 52rem;
+        margin: 0 auto;
+        padding: 1.25rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.75rem;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+      button {
+        cursor: pointer;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        border-radius: 6px;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.95rem;
+      }
+      button.primary {
+        background: #2563eb;
+        border-color: #1d4ed8;
+        color: #fff;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      label {
+        font-size: 0.85rem;
+        color: #475569;
+      }
+      input {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 0.45rem 0.55rem;
+        min-width: 12rem;
+        font-size: 0.95rem;
+      }
+      pre {
+        margin: 0;
+        padding: 0.75rem 1rem;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 8px;
+        overflow: auto;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .panel {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 1rem;
+      }
+      .ok {
+        color: #15803d;
+      }
+      .err {
+        color: #b91c1c;
+      }
+      .hint {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.35rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>同源 API 冒烟</h1>
+    <p class="hint" style="margin-top: 0">
+      路由与请求体与 <code>server.js</code> 一致：<code>GET /api/v2/health</code>、
+      <code>POST /api/auth/login</code>（JSON <code>username</code> / <code>password</code>）、
+      <code>GET /api/auth/me</code>。所有请求使用 <code>credentials: &quot;include&quot;</code> 以携带
+      <code>sales.sid</code>。
+    </p>
+
+    <div class="panel">
+      <div class="row">
+        <button type="button" id="btn-health">GET /api/v2/health</button>
+        <button type="button" id="btn-me">GET /api/auth/me</button>
+        <button type="button" id="btn-logout">POST /api/auth/logout</button>
+      </div>
+      <div class="row">
+        <label for="user">用户名</label>
+        <input id="user" name="username" autocomplete="username" />
+        <label for="pass">密码</label>
+        <input id="pass" name="password" type="password" autocomplete="current-password" />
+        <button type="button" class="primary" id="btn-login">POST /api/auth/login</button>
+      </div>
+      <p id="status" class="hint"></p>
+    </div>
+
+    <div class="panel">
+      <strong>最近一次响应</strong>
+      <pre id="out">（尚无请求）</pre>
+    </div>
+
+    <script>
+      (function () {
+        const out = document.getElementById("out");
+        const statusEl = document.getElementById("status");
+
+        function setBusy(busy) {
+          document.querySelectorAll("button").forEach((b) => {
+            b.disabled = busy;
+          });
+        }
+
+        function showStatus(kind, text) {
+          statusEl.className = "hint " + (kind === "ok" ? "ok" : kind === "err" ? "err" : "");
+          statusEl.textContent = text;
+        }
+
+        async function readBody(res) {
+          const ct = String(res.headers.get("content-type") || "");
+          const raw = await res.text();
+          if (ct.includes("application/json")) {
+            try {
+              return JSON.parse(raw);
+            } catch (_e) {
+              return { _parseError: true, raw };
+            }
+          }
+          return raw;
+        }
+
+        async function call(label, url, options) {
+          setBusy(true);
+          showStatus("", "请求中… " + label);
+          out.textContent = "加载中…";
+          const started = performance.now();
+          try {
+            const res = await fetch(url, {
+              credentials: "include",
+              ...options,
+            });
+            const body = await readBody(res);
+            const ms = Math.round(performance.now() - started);
+            const summary =
+              res.status +
+              " " +
+              res.statusText +
+              " · " +
+              ms +
+              "ms · " +
+              (typeof body === "string" ? body.slice(0, 4000) : JSON.stringify(body, null, 2));
+            out.textContent = summary;
+            if (!res.ok) {
+              const msg =
+                (body && typeof body === "object" && body.error) ||
+                (body && typeof body === "object" && body.message) ||
+                res.statusText;
+              showStatus("err", label + " 失败：" + msg);
+            } else {
+              showStatus("ok", label + " 成功（HTTP " + res.status + "）");
+            }
+          } catch (err) {
+            const msg = err && err.message ? err.message : String(err);
+            out.textContent = "网络或运行环境错误：\n" + msg;
+            showStatus("err", label + " 异常：" + msg);
+          } finally {
+            setBusy(false);
+          }
+        }
+
+        document.getElementById("btn-health").addEventListener("click", function () {
+          call("GET /api/v2/health", "/api/v2/health", { method: "GET" });
+        });
+
+        document.getElementById("btn-me").addEventListener("click", function () {
+          call("GET /api/auth/me", "/api/auth/me", { method: "GET" });
+        });
+
+        document.getElementById("btn-logout").addEventListener("click", function () {
+          call("POST /api/auth/logout", "/api/auth/logout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          });
+        });
+
+        document.getElementById("btn-login").addEventListener("click", function () {
+          const username = document.getElementById("user").value;
+          const password = document.getElementById("pass").value;
+          call("POST /api/auth/login", "/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: username, password: password }),
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

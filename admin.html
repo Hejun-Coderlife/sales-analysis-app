@@ -1,0 +1,1574 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理后台 - 经营管理助手</title>
+  <style>
+    :root{
+      --bg:#f3f6fb;
+      --card:#fff;
+      --line:#e5e7eb;
+      --text:#111827;
+      --muted:#6b7280;
+      --primary:#2563eb;
+      --ok:#166534;
+      --err:#b91c1c;
+      --shell-h:calc(100vh - 108px);
+      --left-w:290px;
+      --right-w:330px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+    .mobile-tip{display:none;margin:0;padding:12px 16px;background:#fef3c7;color:#92400e;border-bottom:1px solid #fbbf24;text-align:center}
+    .container{height:100%;padding:14px 16px 16px;display:flex;flex-direction:column;max-width:none}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .topbar h1{margin:0;font-size:24px}
+    .topbar p{margin:6px 0 0;color:var(--muted);font-size:13px}
+    .btn{border:none;border-radius:10px;min-height:36px;padding:0 14px;font-weight:600;cursor:pointer}
+    .btn:disabled{opacity:.7;cursor:not-allowed}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-light{background:#e5e7eb;color:#111827}
+    .btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+    .layout{height:var(--shell-h);display:grid;grid-template-columns:var(--left-w) minmax(0,1fr) var(--right-w);gap:12px;align-items:stretch}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 22px rgba(2,6,23,.06)}
+    .left,.center,.right{min-height:0}
+    .left{display:flex;flex-direction:column;overflow:hidden}
+    .left .head{padding:12px;border-bottom:1px solid var(--line);font-weight:700}
+    .tree-wrap{padding:10px;overflow:auto;min-height:0}
+    .tree-node{width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer;margin-bottom:6px}
+    .tree-node.active{border-color:#93c5fd;background:#eff6ff;color:#1d4ed8}
+    .center{display:flex;flex-direction:column;overflow:hidden}
+    .tabs{display:flex;gap:8px;padding:10px 12px 0}
+    .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer}
+    .tab.active{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+    .panel{display:none;min-height:0;flex:1;padding:10px 12px 12px}
+    .panel.active{display:flex;flex-direction:column}
+    .filters{display:grid;grid-template-columns:1.4fr repeat(3,1fr) auto auto auto;gap:8px;align-items:end;margin-bottom:10px}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field label{font-size:12px;color:#374151}
+    .field input,.field select,.field textarea{min-height:36px;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit}
+    .field textarea{min-height:56px;resize:vertical}
+    .table-shell{border:1px solid var(--line);border-radius:10px;overflow:auto;min-height:0;flex:1;background:#fff;padding-left:2px}
+    table{width:100%;border-collapse:separate;border-spacing:0;min-width:1380px;font-size:13px}
+    th,td{border-bottom:1px solid var(--line);padding:8px 8px;text-align:left;white-space:nowrap;background:#fff}
+    td.cell-wrap{white-space:normal;vertical-align:top;font-size:12px;max-width:min(480px,36vw)}
+    td.cell-json{font-size:11px;color:#374151;white-space:pre-wrap;max-width:260px;vertical-align:top}
+    /* 冻结：表头整体压在表体之上；首列/末列表头角单元格再抬高，避免横向滚动时被相邻表头盖住 */
+    thead th{position:sticky;top:0;z-index:12;background:#f8fafc}
+    tbody td{position:relative;z-index:1}
+    th.sticky-left,td.sticky-left{position:sticky;left:0;box-shadow:1px 0 0 var(--line)}
+    td.sticky-left{z-index:10;background:#fff}
+    th.sticky-left{left:0;top:0;z-index:13;background:#f8fafc}
+    th.sticky-right,td.sticky-right{position:sticky;right:0;box-shadow:-1px 0 0 var(--line)}
+    th.sticky-right-2,td.sticky-right-2{position:sticky;right:86px;box-shadow:-1px 0 0 var(--line)}
+    td.sticky-right-2,td.sticky-right{z-index:10;background:#fff}
+    th.sticky-right-2,th.sticky-right{z-index:13;background:#f8fafc}
+    .cell-actions{display:flex;gap:6px}
+    .muted{color:var(--muted);font-size:12px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid}
+    .badge-ok{color:#166534;background:#dcfce7;border-color:#bbf7d0}
+    .badge-off{color:#7f1d1d;background:#fee2e2;border-color:#fecaca}
+    .right{display:flex;flex-direction:column;overflow:auto;gap:10px;padding:0}
+    .side-card{padding:12px}
+    .side-card h3{margin:0 0 8px;font-size:15px}
+    .meta{font-size:12px;color:var(--muted);line-height:1.45}
+    .meta.ok{color:var(--ok)}
+    .meta.err{color:var(--err)}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;overflow:auto;padding-right:4px}
+    .role-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;margin:2px 4px 0 0}
+    .drawer-mask,.modal-mask{position:fixed;inset:0;background:rgba(17,24,39,.42);z-index:90;display:none}
+    .drawer-mask.show,.modal-mask.show{display:block}
+    .drawer{position:fixed;top:0;right:0;width:min(760px,100vw);height:100vh;background:#fff;box-shadow:-10px 0 30px rgba(0,0,0,.2);z-index:100;transform:translateX(100%);transition:transform .2s ease;display:flex;flex-direction:column}
+    .drawer.show{transform:translateX(0)}
+    .drawer-head,.drawer-foot{padding:12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .drawer-foot{border-bottom:none;border-top:1px solid var(--line)}
+    .drawer-body{padding:12px;overflow:auto;display:grid;gap:10px}
+    .group{border:1px solid var(--line);border-radius:10px;padding:10px}
+    .group h4{margin:0 0 8px;font-size:14px}
+    .perm-list{max-height:140px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;display:grid;gap:6px}
+    .perm-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+    .perm-toolbar input{flex:1;min-width:180px;min-height:34px;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px}
+    .tag-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    /* 同时设置 top + bottom，避免「上边留白 + max-height」叠在一起仍把弹窗底边挤出视口，蓝色按钮像被裁掉 */
+    .modal{
+      position:fixed;left:50%;top:max(12px, env(safe-area-inset-top, 0px));
+      bottom:max(16px, env(safe-area-inset-bottom, 0px));
+      transform:translateX(-50%);width:min(560px,94vw);max-height:none;
+      background:#fff;border:1px solid var(--line);border-radius:12px;
+      box-shadow:0 18px 40px rgba(0,0,0,.25),0 2px 0 rgba(0,0,0,.04);
+      z-index:100;display:none;flex-direction:column;overflow:hidden;
+    }
+    .modal.show{display:flex}
+    .modal-head,.modal-foot{flex-shrink:0;padding:12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .modal-foot{border-bottom:none;border-top:1px solid var(--line);padding-bottom:14px}
+    .modal-body{
+      padding:12px;display:flex;flex-direction:column;gap:10px;
+      flex:1;min-height:0;
+      overflow-y:auto;overflow-x:hidden;
+      overscroll-behavior:contain;
+      -webkit-overflow-scrolling:touch;
+    }
+    #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;display:none;max-width:calc(100vw - 32px);background:#111827;color:#fff;padding:8px 12px;border-radius:10px;font-size:13px;box-shadow:0 10px 24px rgba(0,0,0,.22)}
+    @media (max-width:1280px){
+      :root{--left-w:240px;--right-w:300px}
+      .filters{grid-template-columns:1fr 1fr 1fr 1fr auto auto auto}
+    }
+    @media (max-width:1024px){
+      .mobile-tip{display:block}
+      .container{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-tip">建议在电脑端使用管理后台。</div>
+  <div class="container">
+    <header class="topbar">
+      <div>
+        <h1>管理后台</h1>
+        <p>员工与岗位权限工作台</p>
+      </div>
+      <div class="row">
+        <button id="toDashboardBtn" class="btn btn-light">数据看板</button>
+        <button id="logoutBtn" class="btn btn-primary">退出登录</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <aside class="card left">
+        <div class="head">组织 / 门店</div>
+        <div id="orgTree" class="tree-wrap"></div>
+      </aside>
+
+      <main class="card center">
+        <div class="tabs">
+          <button class="tab active" data-tab="staff">员工管理</button>
+          <button class="tab" data-tab="position">岗位管理</button>
+          <button type="button" class="tab" data-tab="aiChat" id="aiChatTabBtn" hidden>AI 提问监控</button>
+        </div>
+
+        <section id="staffPanel" class="panel active">
+          <div class="filters">
+            <div class="field"><label for="filterKeyword">搜索账号</label><input id="filterKeyword" placeholder="输入账号关键词" /></div>
+            <div class="field"><label for="filterPosition">岗位筛选</label><select id="filterPosition"><option value="">全部岗位</option></select></div>
+            <div class="field"><label for="filterStatus">状态筛选</label><select id="filterStatus"><option value="">全部状态</option><option value="enabled">启用</option><option value="disabled">停用</option></select></div>
+            <div class="field"><label for="filterScope">管理范围</label><select id="filterScope"><option value="">全部范围</option><option value="hq">总部</option><option value="limited">受限范围</option></select></div>
+            <button id="queryUsersBtn" class="btn btn-light">查询</button>
+            <button id="resetFiltersBtn" class="btn btn-light">重置</button>
+            <button id="openCreateBtn" class="btn btn-primary">新增员工</button>
+          </div>
+
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th class="sticky-left">账号</th>
+                  <th>姓名</th>
+                  <th>岗位</th>
+                  <th>管理范围</th>
+                  <th>门店权限</th>
+                  <th>销售员权限</th>
+                  <th>商品权限</th>
+                  <th>Agent</th>
+                  <th>会员隐私权限</th>
+                  <th>钉钉绑定</th>
+                  <th>DingTalk UserID</th>
+                  <th class="sticky-right-2">状态</th>
+                  <th>最后登录</th>
+                  <th class="sticky-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="14" class="muted">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="positionPanel" class="panel">
+          <div class="row" style="justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:10px;">
+            <div class="meta" style="flex:1;min-width:0;">在此处编辑岗位<strong>权限勾选</strong>并保存后，到「员工管理」选中该<strong>同一岗位</strong>保存即可批量同步权限模板（内置「管理员」岗仅可读系统权限）；支持新增自定义岗与删除空置自定义岗。</div>
+            <button id="openAddRoleBtn" type="button" class="btn btn-primary" style="flex-shrink:0;">新增岗位</button>
+          </div>
+          <div id="positionGrid" class="role-grid"></div>
+        </section>
+
+        <section id="aiChatPanel" class="panel">
+          <div class="row" style="justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:10px;">
+            <div class="meta" style="flex:1;min-width:0;">记录所有账号通过看板 / 移动端向<strong>内置 AI</strong>发送的问题（含页面筛选快照、调用工具、HTTP 状态与回复摘要），便于排查模型答错或未调工具等问题。数据保存在服务器 <code class="muted">backend/data/ai-chat-queries.json</code>，最多保留约 5000 条。</div>
+            <button id="refreshAiChatQueriesBtn" type="button" class="btn btn-primary" style="flex-shrink:0;">刷新</button>
+          </div>
+          <div class="table-shell">
+            <table style="min-width:1100px">
+              <thead>
+                <tr>
+                  <th class="sticky-left">时间</th>
+                  <th>账号</th>
+                  <th>提问</th>
+                  <th>筛选快照</th>
+                  <th>模型</th>
+                  <th>HTTP</th>
+                  <th>耗时</th>
+                  <th>工具</th>
+                  <th>回复摘要</th>
+                  <th class="sticky-right">错误</th>
+                </tr>
+              </thead>
+              <tbody id="aiChatQueriesBody">
+                <tr><td colspan="10" class="muted">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <aside class="card right">
+        <article class="side-card">
+          <h3>数据导入</h3>
+          <div class="field"><label for="adminImportFile">选择 Excel（可多选）</label><input id="adminImportFile" type="file" accept=".xls,.xlsx" multiple /></div>
+          <div id="adminImportFileMeta" class="meta">已选择 0 个文件</div>
+          <div id="adminImportFileList" class="meta"></div>
+          <div class="row" style="margin-top:8px;"><button id="adminImportBtn" class="btn btn-primary">开始导入</button><span id="adminImportStatus" class="meta">待上传</span></div>
+          <div id="latestImportMeta" class="meta" style="margin-top:8px;">最新数据更新时间：暂无</div>
+        </article>
+        <article class="side-card" id="notifConfigCard" hidden>
+          <h3>钉钉通知配置</h3>
+          <label class="muted" style="display:block;margin-bottom:8px;">
+            <input id="dingtalkEnabledCheckbox" type="checkbox" /> 启用钉钉通知渠道
+          </label>
+          <div class="field">
+            <label for="dingtalkTestUserIdInput">测试接收人（钉钉 UserID）</label>
+            <input id="dingtalkTestUserIdInput" placeholder="例如：manager_001" />
+            <p class="muted" style="font-size:12px;margin:6px 0 0;line-height:1.5;">
+              须填<strong>钉钉通讯录</strong>里的 UserID，不要填本后台用户表的主键数字。连续快速点「发送测试」会触发钉钉<strong>工作通知限频</strong>，接口仍可能返回成功但实际只投递少数几条。
+            </p>
+          </div>
+          <label class="muted" style="display:block;margin:8px 0 4px;">
+            <input id="ruleDailySummaryCheckbox" type="checkbox" /> 日报提醒
+          </label>
+          <label class="muted" style="display:block;margin:0 0 4px;">
+            <input id="ruleSleepingCheckbox" type="checkbox" /> 沉睡会员提醒
+          </label>
+          <label class="muted" style="display:block;margin:0 0 8px;">
+            <input id="ruleSalespersonCheckbox" type="checkbox" /> 销售员业绩提醒
+          </label>
+          <div class="row">
+            <button id="saveNotifConfigBtn" class="btn btn-light">保存配置</button>
+            <button id="dingtalkTestBtn" class="btn btn-light">发送钉钉测试通知</button>
+          </div>
+          <div id="currentAdminBindingStatus" class="meta" style="margin-top:8px;"></div>
+          <div id="dingtalkEnvStatus" class="meta" style="margin-top:8px;">加载中...</div>
+          <div id="dingtalkTestMsg" class="meta"></div>
+        </article>
+        <article class="side-card">
+          <h3>导入历史</h3>
+          <div id="importHistoryWrap" class="meta">加载中...</div>
+        </article>
+      </aside>
+    </section>
+  </div>
+
+  <div id="drawerMask" class="drawer-mask"></div>
+  <aside id="editDrawer" class="drawer" aria-hidden="true">
+    <div class="drawer-head"><b>编辑员工</b><button id="closeDrawerBtn" class="btn btn-light">关闭</button></div>
+    <div id="drawerBody" class="drawer-body"></div>
+    <div class="drawer-foot">
+      <span id="drawerMsg" class="meta"></span>
+      <div class="row">
+        <button id="drawerResetPwdBtn" class="btn btn-light">重置密码</button>
+        <button id="drawerApplyRoleBtn" class="btn btn-light">应用岗位默认权限</button>
+        <button id="drawerSaveBtn" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="createModalMask" class="modal-mask"></div>
+  <section id="createModal" class="modal" aria-hidden="true">
+    <div class="modal-head"><b>新增员工</b><button id="closeCreateModalBtn" class="btn btn-light">关闭</button></div>
+    <div class="modal-body">
+      <div class="field"><label for="createUsername">账号</label><input id="createUsername" placeholder="例如：13912345678（11 位手机号，不可重复注册）" /></div>
+      <div class="field"><label for="createDisplayName">显示名称</label><input id="createDisplayName" placeholder="例如：门店经理A" /></div>
+      <div class="field"><label for="createRole">岗位</label><select id="createRole"></select></div>
+      <div class="field"><label for="createPassword">初始密码（至少8位）</label><input id="createPassword" type="password" /></div>
+      <div id="createUserMsg" class="meta"></div>
+    </div>
+    <div class="modal-foot"><span class="meta">创建成功后自动刷新列表</span><button id="createUserBtn" class="btn btn-primary">创建员工</button></div>
+  </section>
+
+  <div id="positionModalMask" class="modal-mask"></div>
+  <section id="positionModal" class="modal" aria-hidden="true">
+    <div class="modal-head"><b id="positionModalTitle">岗位详情</b><button id="closePositionModalBtn" class="btn btn-light">关闭</button></div>
+    <div id="positionModalBody" class="modal-body"></div>
+    <div class="modal-foot"><span id="positionModalFootMeta" class="meta"></span><button id="positionModalSaveBtn" type="button" class="btn btn-primary">保存展示信息</button></div>
+  </section>
+
+  <div id="addRoleModalMask" class="modal-mask"></div>
+  <section id="addRoleModal" class="modal" aria-hidden="true">
+    <div class="modal-head"><b>新增岗位</b><button id="closeAddRoleModalBtn" type="button" class="btn btn-light">关闭</button></div>
+    <div class="modal-body">
+      <div class="field"><label for="addRoleLabel">岗位名称</label><input id="addRoleLabel" placeholder="例如：区域督导" /></div>
+      <div class="field"><label for="addRoleSlug">岗位代号（可选）</label><input id="addRoleSlug" placeholder="留空则系统自动生成；小写字母开头，3–63 位" /></div>
+      <div class="field"><label for="addRoleCloneFrom">参考岗位（复制默认权限）</label><select id="addRoleCloneFrom"></select></div>
+      <div class="field"><label for="addRoleDesc">说明</label><textarea id="addRoleDesc" placeholder="可选"></textarea></div>
+      <div id="addRoleMsg" class="meta"></div>
+    </div>
+    <div class="modal-foot"><span class="meta">创建后可在「查看/编辑」中确认权限勾选</span><button id="addRoleSubmitBtn" type="button" class="btn btn-primary">创建</button></div>
+  </section>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const BUILTIN_ROLE_ORDER = ["admin", "manager", "store_user", "salesperson", "viewer", "disabled"];
+    let rolesCatalog = [];
+    let editingPositionRoleId = "";
+    const permissionGroups = {
+      dashboard: ["canViewDashboard","canViewKpi","canViewStoreRanking","canViewSalespersonRanking","canViewProductRanking","canViewMemberAnalysis","canViewSleepingMembers","canViewTrendCharts","canViewRepurchaseAnalysis","canUseFilters","canExportData","canDownloadExcel","canViewRawRows","canViewDataQuality"],
+      admin: ["canAccessAdmin","canManageUsers","canCreateUsers","canDisableUsers","canResetPasswords","canAssignRoles","canAssignDataScopes","canImportExcel","canDeleteImportedData","canViewImportHistory","canViewAuditLogs","canManageSystemSettings","canManageAgentSettings","canManageDingTalkSettings","canManageBackups"],
+      agent: ["canUseAgentChat","canAskCompanyWideQuestions","canAskStoreQuestions","canAskSalespersonQuestions","canAskMemberQuestions","canAskSensitiveMemberQuestions","canAskForExport","canAskForRecommendations"],
+      reminders: ["canReceiveDingTalkReminders","canReceiveMemberMaintenanceReminders","canReceiveStoreManagementReminders","canReceiveSalespersonPerformanceReminders","canReceiveSleepingMemberReminders","canManageReminderRules","canManageReminderRecipients"],
+      memberFields: ["canViewMemberName","canViewPhone","canViewMemberId","canViewBirthday","canViewAddress"],
+    };
+    const permissionLabelMap = {
+      canViewDashboard:"查看数据看板",canViewKpi:"查看 KPI",canViewStoreRanking:"查看门店排行",canViewSalespersonRanking:"查看销售员排行",canViewProductRanking:"查看商品排行",canViewMemberAnalysis:"查看会员分析",canViewSleepingMembers:"查看沉睡会员",canViewTrendCharts:"查看趋势图",canViewRepurchaseAnalysis:"查看复购分析",canUseFilters:"使用筛选器",canExportData:"导出数据",canDownloadExcel:"下载 Excel",canViewRawRows:"查看原始明细",canViewDataQuality:"查看数据校验",
+      canAccessAdmin:"访问管理后台",canManageUsers:"管理员工",canCreateUsers:"新增员工",canDisableUsers:"停用员工",canResetPasswords:"重置密码",canAssignRoles:"分配岗位",canAssignDataScopes:"分配数据范围",canImportExcel:"导入 Excel",canDeleteImportedData:"删除导入数据",canViewImportHistory:"查看导入历史",canViewAuditLogs:"查看审计日志",canManageSystemSettings:"系统设置",canManageAgentSettings:"Agent 设置",canManageDingTalkSettings:"钉钉设置",canManageBackups:"备份设置",
+      canUseAgentChat:"使用数据助手",canAskCompanyWideQuestions:"整体/全公司类汇总提问（数据为本人管辖门店/数据范围内的全部，非集团全量）",canAskStoreQuestions:"门店维度提问",canAskSalespersonQuestions:"销售员维度提问",canAskMemberQuestions:"会员维度提问",canAskSensitiveMemberQuestions:"敏感会员信息提问",canAskForExport:"要求导出",canAskForRecommendations:"经营建议问答",
+      canReceiveDingTalkReminders:"接收钉钉提醒",canReceiveMemberMaintenanceReminders:"会员维护提醒",canReceiveStoreManagementReminders:"门店管理提醒",canReceiveSalespersonPerformanceReminders:"销售员业绩提醒",canReceiveSleepingMemberReminders:"沉睡会员提醒",canManageReminderRules:"管理提醒规则",canManageReminderRecipients:"管理提醒接收人",
+      canViewMemberName:"会员姓名",canViewPhone:"手机号",canViewMemberId:"会员编号",canViewBirthday:"生日",canViewAddress:"地址",
+    };
+
+    let usersCache = [];
+    let permissionOptions = { stores: [], salespeople: [], products: [] };
+    let selectedTree = { type: "all", value: "" };
+    let editingUserId = "";
+    /** 打开编辑抽屉时的岗位，用于判断是否「换岗」并自动应用岗位模板 */
+    let editingUserInitialRole = "";
+    let currentUser = null;
+    const permissionSearchState = {};
+    let toastTimer = null;
+
+    const splitCsv = (v) => String(v || "").split(",").map((x) => x.trim()).filter(Boolean);
+    const uniq = (list) => [...new Set((Array.isArray(list) ? list : []).filter(Boolean))];
+    const joinCsv = (list) => (Array.isArray(list) ? list : []).join(", ");
+    const fmtTime = (v) => { if (!v) return "暂无"; const d = new Date(v); return Number.isNaN(d.getTime()) ? "暂无" : d.toLocaleString("zh-CN"); };
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+    const escapeAttr = escapeHtml;
+
+    function sortCatalogRoles(rows) {
+      const list = [...(rows || [])];
+      const builtins = BUILTIN_ROLE_ORDER.map((id) => list.find((r) => String(r.id) === id)).filter(Boolean);
+      const builtinsSet = new Set(builtins.map((r) => r.id));
+      const customs = list
+        .filter((r) => !builtinsSet.has(r.id))
+        .sort((a, b) => String(a.label || a.id || "").localeCompare(String(b.label || b.id || ""), "zh-CN"));
+      return [...builtins, ...customs];
+    }
+    function positionLabel(roleId) {
+      const r = rolesCatalog.find((x) => String(x.id) === String(roleId || ""));
+      return r?.label || roleId || "-";
+    }
+    function refillPositionSelectors() {
+      const sorted = sortCatalogRoles(rolesCatalog);
+      const filterEl = document.getElementById("filterPosition");
+      const createEl = document.getElementById("createRole");
+      const addCloneEl = document.getElementById("addRoleCloneFrom");
+      if (!sorted.length) {
+        if (filterEl) filterEl.innerHTML = '<option value="">全部岗位</option>';
+        if (createEl) createEl.innerHTML = "";
+        if (addCloneEl) addCloneEl.innerHTML = "";
+        return;
+      }
+      const prevFilter = filterEl?.value ?? "";
+      const prevCreate = createEl?.value ?? "";
+      const prevClone = addCloneEl?.value ?? "";
+      if (filterEl) {
+        filterEl.innerHTML =
+          '<option value="">全部岗位</option>' +
+          sorted.map((r) => `<option value="${escapeAttr(r.id)}">${escapeHtml(r.label || r.id)}</option>`).join("");
+        filterEl.value = [...filterEl.options].some((o) => o.value === prevFilter) ? prevFilter : "";
+      }
+      if (createEl) {
+        createEl.innerHTML = sorted.map((r) => `<option value="${escapeAttr(r.id)}">${escapeHtml(r.label || r.id)}</option>`).join("");
+        createEl.value = [...createEl.options].some((o) => o.value === prevCreate)
+          ? prevCreate
+          : String(sorted.find((x) => x.id === "manager")?.id || sorted[0]?.id || "");
+      }
+      if (addCloneEl) {
+        const cloneCandidates = sorted.filter((r) => String(r.id) !== "admin");
+        addCloneEl.innerHTML = cloneCandidates
+          .map((r) => `<option value="${escapeAttr(r.id)}">${escapeHtml(r.label || r.id)}</option>`)
+          .join("");
+        addCloneEl.value = [...addCloneEl.options].some((o) => o.value === prevClone)
+          ? prevClone
+          : String(cloneCandidates.find((x) => x.id === "manager")?.id || cloneCandidates[0]?.id || "");
+      }
+    }
+    async function loadRolesCatalog() {
+      const res = await fetch("/api/admin/roles/catalog", { credentials: "same-origin" });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        window.location.href = "/login?next=/admin";
+        return;
+      }
+      if (!res.ok) {
+        let hint = data.error;
+        if (!hint && res.status === 404) {
+          hint =
+            "岗位接口返回 404：当前 Node 进程仍是旧版本。请完全停止正在监听端口的进程后，用最新代码重新启动 server.js。";
+        }
+        if (!hint && res.status === 403) hint = "无权限加载岗位列表";
+        if (!hint) hint = `岗位列表加载失败（HTTP ${res.status}）`;
+        showToast(hint, "error");
+        return;
+      }
+      rolesCatalog = Array.isArray(data.roles) ? data.roles : [];
+      refillPositionSelectors();
+      renderPositionCards();
+    }
+
+    function showToast(message, type = "info") {
+      const toast = document.getElementById("toast");
+      toast.textContent = message || "";
+      toast.style.background = type === "error" ? "#b91c1c" : (type === "success" ? "#166534" : "#111827");
+      toast.style.display = "block";
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.style.display = "none"; }, 2300);
+    }
+    function setButtonLoading(button, isLoading, loadingText) {
+      if (!button) return;
+      if (!button.dataset.originText) button.dataset.originText = button.textContent || "";
+      button.disabled = !!isLoading;
+      button.textContent = isLoading ? (loadingText || "处理中...") : button.dataset.originText;
+    }
+    async function withLoading(button, loadingText, fn) {
+      setButtonLoading(button, true, loadingText);
+      try { return await fn(); } finally { setButtonLoading(button, false); }
+    }
+
+    function summarizeScope(u) {
+      if (u.allowAllStores && u.allowAllSalespeople && u.allowAllProducts) return "总部";
+      if (u.allowAllStores) return "全门店";
+      return "受限范围";
+    }
+    function summarizeCount(allowAll, list, unit) { return allowAll ? "全部" : `${(Array.isArray(list) ? list.length : 0)}${unit}`; }
+    function summarizePrivacy(fields = {}) {
+      const labels = [];
+      if (fields.canViewMemberName) labels.push("会员姓名");
+      if (fields.canViewPhone) labels.push("手机号");
+      if (fields.canViewMemberId) labels.push("会员编号");
+      if (fields.canViewBirthday) labels.push("生日");
+      if (fields.canViewAddress) labels.push("地址");
+      return labels.length ? labels.join("、") : "未开启";
+    }
+    function hasAgentEnabled(u) { return !!u?.permissions?.canUseAgentChat; }
+    function userVisibleInTree(u) {
+      if (selectedTree.type === "all") return true;
+      if (selectedTree.type === "hq") return !!u.allowAllStores;
+      if (selectedTree.type === "allStores") return true;
+      if (selectedTree.type === "store") {
+        const store = selectedTree.value;
+        return !!u.allowAllStores || (Array.isArray(u.allowedStores) && u.allowedStores.includes(store));
+      }
+      return true;
+    }
+    function applyFilters(rows) {
+      const keyword = String(document.getElementById("filterKeyword").value || "").trim().toLowerCase();
+      const role = document.getElementById("filterPosition").value;
+      const status = document.getElementById("filterStatus").value;
+      const scope = document.getElementById("filterScope").value;
+      return rows.filter((u) => {
+        if (!userVisibleInTree(u)) return false;
+        if (keyword && !String(u.username || "").toLowerCase().includes(keyword)) return false;
+        if (role && String(u.role || "") !== role) return false;
+        if (status === "enabled" && !u.enabled) return false;
+        if (status === "disabled" && !!u.enabled) return false;
+        if (scope === "hq" && !u.allowAllStores) return false;
+        if (scope === "limited" && !!u.allowAllStores) return false;
+        return true;
+      });
+    }
+
+    function renderOrgTree() {
+      const stores = uniq((permissionOptions.stores || []).slice()).sort((a, b) => a.localeCompare(b, "zh-CN"));
+      const nodes = [
+        { type: "all", value: "", label: `全部账号（${usersCache.length}）` },
+        { type: "hq", value: "", label: "总部" },
+        { type: "allStores", value: "", label: "全部门店" },
+        ...stores.map((s) => ({ type: "store", value: s, label: s })),
+      ];
+      document.getElementById("orgTree").innerHTML = nodes.map((n) => `<button class="tree-node${selectedTree.type===n.type&&selectedTree.value===n.value?" active":""}" data-tree-type="${escapeAttr(n.type)}" data-tree-value="${escapeAttr(n.value)}">${escapeHtml(n.label)}</button>`).join("");
+    }
+
+    function renderUsersTable() {
+      const rows = applyFilters(usersCache);
+      const tbody = document.getElementById("usersTableBody");
+      if (!rows.length) { tbody.innerHTML = `<tr><td colspan="14" class="muted">暂无匹配员工</td></tr>`; return; }
+      tbody.innerHTML = rows.map((u) => `
+        <tr>
+          <td class="sticky-left"><b>${escapeHtml(u.username || "-")}</b></td>
+          <td>${escapeHtml((u.displayName && String(u.displayName).trim()) || "—")}</td>
+          <td>${escapeHtml(positionLabel(u.role))}</td>
+          <td>${escapeHtml(summarizeScope(u))}</td>
+          <td>${escapeHtml(summarizeCount(u.allowAllStores, u.allowedStores, "家"))}</td>
+          <td>${escapeHtml(summarizeCount(u.allowAllSalespeople, u.allowedSalespeople, "人"))}</td>
+          <td>${escapeHtml(summarizeCount(u.allowAllProducts, u.allowedProducts, "个"))}</td>
+          <td>${escapeHtml(hasAgentEnabled(u) ? "已开启" : "未开启")}</td>
+          <td>${escapeHtml(summarizePrivacy(u.allowedMemberFields || {}))}</td>
+          <td>${u.dingtalkUserId ? '<span class="badge badge-ok">已绑定</span>' : '<span class="badge">未绑定</span>'}</td>
+          <td>${escapeHtml(u.dingtalkUserId || "-")}</td>
+          <td class="sticky-right-2"><span class="badge ${u.enabled ? "badge-ok":"badge-off"}">${u.enabled ? "启用":"停用"}</span></td>
+          <td>${escapeHtml(fmtTime(u.lastLoginAt))}</td>
+          <td class="sticky-right">
+            <div class="cell-actions">
+              <button class="btn btn-light" data-action="edit" data-id="${escapeAttr(u.id)}">编辑</button>
+              <button class="btn ${u.enabled ? "btn-danger":"btn-light"}" data-action="toggle" data-id="${escapeAttr(u.id)}">${u.enabled ? "停用":"启用"}</button>
+              <button class="btn btn-light" data-action="reset" data-id="${escapeAttr(u.id)}">重置密码</button>
+              ${isAdminOperator() ? `<button type="button" class="btn btn-danger" data-action="delete" data-id="${escapeAttr(u.id)}">删除</button>` : ""}
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function renderPositionCards() {
+      const wrap = document.getElementById("positionGrid");
+      if (!wrap) return;
+      const rows = sortCatalogRoles(rolesCatalog);
+      if (!rows.length) {
+        wrap.innerHTML = '<article class="role-card muted">岗位列表加载中或暂无数据</article>';
+        return;
+      }
+      wrap.innerHTML = rows
+        .map((entry) => {
+          const role = entry.id;
+          const kind = String(entry.kind || "");
+          const enabled = entry.enabledBadge !== false;
+          const scopeText = entry.scopePresetLabel || "—";
+          const desc = entry.description || "暂无说明";
+          const kindTag = kind === "custom" ? "自定义岗位" : "系统内置";
+          const delBtn =
+            isAdminOperator() && kind === "custom"
+              ? `<button type="button" class="btn btn-danger" data-action="delete-position" data-role="${escapeAttr(role)}">删除</button>`
+              : "";
+          return `
+          <article class="role-card">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:start;">
+              <div>
+                <b>${escapeHtml(entry.label || role)}</b>
+                <span class="tag" style="font-size:11px;margin-left:6px;">${escapeHtml(kindTag)}</span>
+                <div class="meta" style="margin-top:4px;">${escapeHtml(desc)}</div>
+              </div>
+              <span class="badge ${enabled ? "badge-ok" : "badge-off"}">${enabled ? "启用" : "停用"}</span>
+            </div>
+            <div class="meta" style="margin-top:8px;">默认管理范围（展示）：${escapeHtml(scopeText)}</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-light" data-action="view-position" data-role="${escapeAttr(role)}">查看/编辑</button>
+              ${delBtn}
+            </div>
+          </article>
+        `;
+        })
+        .join("");
+    }
+
+    async function loadUsers() {
+      const res = await fetch("/api/admin/users");
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        window.location.href = "/login?next=/admin";
+        return;
+      }
+      if (!res.ok) {
+        document.getElementById("usersTableBody").innerHTML = `<tr><td colspan="14" class="muted">${escapeHtml(data.error || "员工列表加载失败")}</td></tr>`;
+        return;
+      }
+      usersCache = data.users || [];
+      renderOrgTree();
+      renderUsersTable();
+      renderPositionCards();
+    }
+
+    async function deleteCustomRoleFromUi(roleId) {
+      const id = String(roleId || "").trim();
+      if (!id) return;
+      if (!requireAdminAction("删除岗位")) return;
+      const entry = rolesCatalog.find((r) => String(r.id) === id);
+      if (!entry || String(entry.kind) !== "custom") return;
+      const ok = confirm(`确认删除岗位「${entry.label || id}」（${id}）？须有员工都不再使用该岗位。`);
+      if (!ok) return;
+      try {
+        const res = await fetch(`/api/admin/roles/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 403) {
+          showToast(data.error || "无权限删除岗位", "error");
+          return;
+        }
+        if (!res.ok) {
+          showToast(data.error || "删除失败", "error");
+          return;
+        }
+        rolesCatalog = Array.isArray(data.roles) ? data.roles : [];
+        refillPositionSelectors();
+        renderPositionCards();
+        await loadUsers();
+        showToast("已删除自定义岗位", "success");
+      } catch (e) {
+        showToast(e?.message || "网络异常", "error");
+      }
+    }
+    async function loadPermissionOptions() {
+      const res = await fetch("/api/admin/permission-options");
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        window.location.href = "/login?next=/admin";
+        return;
+      }
+      if (res.ok) permissionOptions = data.options || { stores: [], salespeople: [], products: [] };
+      renderOrgTree();
+    }
+
+    function canDeleteImportHistory() {
+      return !!currentUser?.permissions?.canDeleteImportedData;
+    }
+
+    async function deleteImportJob(jobId, filenameHint) {
+      const id = String(jobId || "").trim();
+      if (!id) return;
+      const hint = filenameHint ? `「${filenameHint}」` : "该条目";
+      const ok = confirm(
+        `确认删除导入记录 ${hint}？若该次导入已形成数据集，将同时从数据库移除对应订单明细与数据集元数据，且不可恢复。`
+      );
+      if (!ok) return;
+      try {
+        let res = await fetch(`/api/admin/import/jobs/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" });
+        let data = await res.json().catch(() => ({}));
+        if (!res.ok && res.status === 409) {
+          const force = confirm("该任务显示仍在进行中。若你确认它已卡住，可强制删除。是否继续强制删除？");
+          if (force) {
+            res = await fetch(`/api/admin/import/jobs/${encodeURIComponent(id)}?force=1`, { method: "DELETE", credentials: "same-origin" });
+            data = await res.json().catch(() => ({}));
+          }
+        }
+        if (!res.ok) {
+          showToast(data.error || "删除失败", "error");
+          return;
+        }
+        showToast("已删除导入记录", "success");
+        await Promise.all([refreshLatestImportMeta(), loadImportHistory(), loadPermissionOptions().catch(() => null)]);
+      } catch (error) {
+        showToast(error?.message || "网络异常，删除失败", "error");
+      }
+    }
+
+    async function refreshLatestImportMeta() {
+      const el = document.getElementById("latestImportMeta");
+      const res = await fetch("/api/admin/import/latest");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { el.className = "meta err"; el.textContent = data.error || "加载最新导入信息失败"; return; }
+      const latest = data.latest;
+      el.className = "meta";
+      const fileLabel = latest.display_source_name || latest.source_name || "-";
+      el.textContent = latest ? `最新数据更新时间：${fmtTime(latest.created_at)}（文件：${fileLabel}，行数：${latest.row_count}）` : "最新数据更新时间：暂无";
+    }
+    async function loadImportHistory() {
+      const wrap = document.getElementById("importHistoryWrap");
+      const res = await fetch("/api/admin/import/history?limit=8");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { wrap.className = "meta err"; wrap.textContent = data.error || "导入历史加载失败"; return; }
+      const rows = data.rows || [];
+      if (!rows.length) { wrap.className = "meta"; wrap.textContent = "暂无导入历史"; return; }
+      wrap.className = "";
+      const showDel = canDeleteImportHistory();
+      wrap.innerHTML = rows
+        .map(
+          (r) =>
+            `<div class="import-history-row" style="padding:6px 0;border-bottom:1px solid #eef2f7;">` +
+            `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">` +
+            `<div style="flex:1;min-width:0;"><b>${escapeHtml(r.filename || "-")}</b>` +
+            `<div class="meta">${escapeHtml(fmtTime(r.importedAt))} · ${escapeHtml(r.status || "-")} · ${escapeHtml(r.rowCount || 0)} 行</div></div>` +
+            (showDel
+              ? `<button type="button" class="btn btn-light import-job-del-btn" style="flex:0 0 auto;white-space:nowrap;min-height:32px;font-size:12px;padding:0 10px;" data-delete-import-job="${escapeAttr(r.jobId)}">删除</button>`
+              : "") +
+            `</div></div>`
+        )
+        .join("");
+    }
+
+    async function uploadImportFile() {
+      const files = [...(document.getElementById("adminImportFile").files || [])];
+      const status = document.getElementById("adminImportStatus");
+      if (!files.length) { status.className = "meta err"; status.textContent = "请先选择文件"; showToast("请先选择文件","error"); return; }
+      function summarizeImportFailure(job, fallback) {
+        const parts = [];
+        if (job?.error) parts.push(String(job.error));
+        const failedFiles = Array.isArray(job?.stats?.failedFiles) ? job.stats.failedFiles : [];
+        if (failedFiles.length) {
+          const fileReason = failedFiles
+            .slice(0, 3)
+            .map((f) => `${f.fileName || "文件"}：${f.reason || "导入失败"}`)
+            .join("；");
+          if (fileReason) parts.push(fileReason);
+        }
+        const warnings = Array.isArray(job?.warnings) ? job.warnings.filter(Boolean) : [];
+        if (warnings.length) parts.push(`明细：${warnings.slice(0, 3).join("；")}`);
+        if (!parts.length) return fallback || "导入失败";
+        const text = parts.join("｜");
+        return text.length > 320 ? `${text.slice(0, 320)}...` : text;
+      }
+      status.className = "meta";
+      status.textContent = `上传中（${files.length} 个文件）...`;
+      try {
+        const form = new FormData();
+        files.forEach((f) => form.append("files", f));
+        form.append("mapping", JSON.stringify({}));
+        const uploadRes = await fetch("/api/v2/uploads", { method: "POST", body: form });
+        const uploadRaw = await uploadRes.text().catch(() => "");
+        let uploadData = {};
+        try { uploadData = uploadRaw ? JSON.parse(uploadRaw) : {}; } catch (_e) { uploadData = {}; }
+        if (!uploadRes.ok) {
+          const rawSummary = String(uploadRaw || "")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 180);
+          const msg = uploadData.error || rawSummary || `上传失败（${uploadRes.status}）`;
+          status.className = "meta err";
+          status.textContent = msg;
+          showToast(msg, "error");
+          return;
+        }
+        const jobId = uploadData.jobId;
+        for (let i = 0; i < 300; i += 1) {
+          const jobRes = await fetch(`/api/v2/jobs/${encodeURIComponent(jobId)}`);
+          const jobRaw = await jobRes.text().catch(() => "");
+          let jobData = {};
+          try { jobData = jobRaw ? JSON.parse(jobRaw) : {}; } catch (_e) { jobData = {}; }
+          if (!jobRes.ok) {
+            const rawSummary = String(jobRaw || "")
+              .replace(/<[^>]*>/g, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 180);
+            const msg = (jobData && jobData.error) || rawSummary || `任务状态查询失败（${jobRes.status}）`;
+            status.className = "meta err";
+            status.textContent = msg;
+            showToast(msg, "error");
+            return;
+          }
+          const job = jobData.job || {};
+          const p = job?.stats?.importProgress || {};
+          const idx = Number(p.currentFileIndex || 0);
+          const total = Number(p.fileCount || files.length);
+          const name = String(p.currentFileName || "");
+          const rows = Number(p.cumulativeRowCount || 0);
+          const okFiles = Number(p.successfulFileCount || 0);
+          const failedFiles = Number(p.failedFileCount || 0);
+          const dupRows = Number(p.duplicateRowsSkipped || 0);
+          status.textContent =
+            `导入状态：${job.status || "running"}（${job.progress || 0}%）｜第 ${Math.min(idx,total)}/${total} 个｜${name || "处理中"}｜累计 ${rows} 行｜成功 ${okFiles}｜失败 ${failedFiles}｜去重 ${dupRows}`;
+          if (job.status === "completed") {
+            const okFiles = job?.stats?.successfulFiles || [];
+            const failFiles = job?.stats?.failedFiles || [];
+            if (failFiles.length) {
+              status.className = "meta err";
+              const detail = summarizeImportFailure(job, "部分文件导入失败");
+              status.textContent = `导入完成：成功 ${okFiles.length}，失败 ${failFiles.length}，累计 ${Number(job?.stats?.rowCount || 0)} 行。${detail}`;
+              showToast(`导入完成，但有 ${failFiles.length} 个文件失败`, "error");
+            } else {
+              status.className = "meta ok";
+              status.textContent = `导入完成：成功 ${okFiles.length}，失败 ${failFiles.length}，累计 ${Number(job?.stats?.rowCount || 0)} 行`;
+              showToast("导入完成","success");
+            }
+            await Promise.all([refreshLatestImportMeta(), loadImportHistory(), loadPermissionOptions()]);
+            return;
+          }
+          if (job.status === "failed") {
+            status.className = "meta err";
+            const detail = summarizeImportFailure(job, "导入失败");
+            status.textContent = detail;
+            showToast(detail, "error");
+            await loadImportHistory();
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 1200));
+        }
+      } catch (error) {
+        status.className = "meta err";
+        const msg = error?.message || "网络异常，上传失败";
+        status.textContent = msg;
+        showToast(msg, "error");
+        return;
+      }
+      status.className = "meta err";
+      status.textContent = "导入超时，请稍后查看导入历史";
+      showToast(status.textContent, "error");
+    }
+    function renderImportFileSelection() {
+      const files = [...(document.getElementById("adminImportFile").files || [])];
+      document.getElementById("adminImportFileMeta").textContent = `已选择 ${files.length} 个文件`;
+      document.getElementById("adminImportFileList").innerHTML = files.map((f) => `<div>${escapeHtml(f.name)}（${Math.ceil((Number(f.size) || 0) / 1024)} KB）</div>`).join("");
+    }
+
+    function getPermissionSearchKey(kind, userId) { return `${kind}:${userId}`; }
+    function getPermissionSearchValue(kind, userId) { return String(permissionSearchState[getPermissionSearchKey(kind, userId)] || ""); }
+    function setPermissionSearchValue(kind, userId, value) { permissionSearchState[getPermissionSearchKey(kind, userId)] = String(value || ""); }
+    function isAdminOperator() { return String(currentUser?.role || "") === "admin"; }
+    function requireAdminAction(actionLabel) {
+      if (isAdminOperator()) return true;
+      showToast(`${actionLabel}仅限管理员`, "error");
+      return false;
+    }
+    function renderPermissionFlagsCheckboxes(userId, groupName, flags = {}) {
+      return (permissionGroups[groupName] || []).map((key) => `<label><input type="checkbox" data-perm-group="${escapeAttr(groupName)}" data-perm-key="${escapeAttr(key)}" data-id="${escapeAttr(userId)}"${flags?.[key] ? " checked":""}/> ${escapeHtml(permissionLabelMap[key] || key)}</label>`).join("");
+    }
+    function collectPermissionFlags(userId, groupName) {
+      const values = {};
+      document.querySelectorAll(`input[type="checkbox"][data-perm-group="${groupName}"][data-id="${userId}"]`).forEach((node) => {
+        const key = node.getAttribute("data-perm-key");
+        if (key) values[key] = !!node.checked;
+      });
+      return values;
+    }
+    /** 岗位弹窗内聚合权限模板（与后端 buildTemplateFromInput 对齐的非 admin 模板） */
+    function collectFullTemplateFromPositionModal(roleId) {
+      const uid = `position-${roleId}`;
+      return {
+        enabled: true,
+        allowAllStores: false,
+        allowAllSalespeople: false,
+        allowAllProducts: false,
+        permissions: {
+          ...collectPermissionFlags(uid, "dashboard"),
+          ...collectPermissionFlags(uid, "admin"),
+          ...collectPermissionFlags(uid, "agent"),
+          ...collectPermissionFlags(uid, "reminders"),
+        },
+        allowedMemberFields: collectPermissionFlags(uid, "memberFields"),
+      };
+    }
+    function renderPermissionCheckboxes(kind, userId, selectedValues, searchValue = "") {
+      const options = kind === "stores" ? permissionOptions.stores : kind === "salespeople" ? permissionOptions.salespeople : permissionOptions.products;
+      const selectedSet = new Set(selectedValues || []);
+      const search = String(searchValue || "").trim().toLowerCase();
+      if (!options.length) return '<div class="muted">暂无可选项，可使用手工输入兜底</div>';
+      const filtered = options.filter((v) => selectedSet.has(v) || !search || String(v).toLowerCase().includes(search));
+      if (!filtered.length) return '<div class="muted">无匹配项</div>';
+      return filtered.map((v) => `<label><input type="checkbox" data-kind="${escapeAttr(kind)}" data-id="${escapeAttr(userId)}" value="${escapeAttr(v)}"${selectedSet.has(v) ? " checked":""}/> ${escapeHtml(v)}</label>`).join("");
+    }
+    function collectPermissionValues(kind, userId) {
+      const checked = [...document.querySelectorAll(`input[type="checkbox"][data-kind="${kind}"][data-id="${userId}"]:checked`)].map((x) => x.value);
+      const manual = splitCsv(document.querySelector(`[data-fallback="${kind}"][data-id="${userId}"]`)?.value || "");
+      return uniq([...checked, ...manual]);
+    }
+    function renderTagList(targetId, values) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const rows = uniq(values);
+      el.innerHTML = rows.length ? rows.map((v) => `<span class="tag">${escapeHtml(v)}</span>`).join("") : '<span class="muted">未选择</span>';
+    }
+    function renderSelectedCount(kind, userId, selectedValues) {
+      const el = document.getElementById(`count-${kind}-${userId}`);
+      if (!el) return;
+      const count = uniq(selectedValues || []).length;
+      const unit = kind === "stores" ? "个门店" : kind === "salespeople" ? "位销售员" : "个商品";
+      el.textContent = `已选择 ${count} ${unit}`;
+    }
+    function renderPermissionPanel(kind, userId, selectedValues) {
+      const listEl = document.getElementById(`perm-list-${kind}-${userId}`);
+      if (!listEl) return;
+      const selected = uniq(Array.isArray(selectedValues) ? selectedValues : collectPermissionValues(kind, userId));
+      listEl.innerHTML = renderPermissionCheckboxes(kind, userId, selected, getPermissionSearchValue(kind, userId));
+      renderTagList(`tags-${kind}-${userId}`, selected);
+      renderSelectedCount(kind, userId, selected);
+    }
+    function applyPermissionBulkAction(kind, userId, action) {
+      const options = kind === "stores" ? permissionOptions.stores : kind === "salespeople" ? permissionOptions.salespeople : permissionOptions.products;
+      const fallback = document.querySelector(`[data-fallback="${kind}"][data-id="${userId}"]`);
+      const manualValues = splitCsv(fallback?.value || "");
+      if (action === "clear") { if (fallback) fallback.value = ""; renderPermissionPanel(kind, userId, []); return; }
+      renderPermissionPanel(kind, userId, uniq([...options, ...manualValues]));
+    }
+
+    function openDrawerForUser(userId) {
+      editingUserId = String(userId || "");
+      const u = usersCache.find((x) => String(x.id) === editingUserId);
+      if (!u) return;
+      const body = document.getElementById("drawerBody");
+      const sortedRoles = sortCatalogRoles(rolesCatalog);
+      const optionsPos = sortedRoles
+        .map((r) => `<option value="${escapeAttr(r.id)}"${String(r.id) === String(u.role) ? " selected" : ""}>${escapeHtml(r.label || r.id)}</option>`)
+        .join("");
+      const adminOnly = !isAdminOperator();
+      body.innerHTML = `
+        <div class="group"><h4>基本信息</h4>
+          <div class="field"><label>账号</label><input value="${escapeAttr(u.username || "")}" disabled /></div>
+          <div class="field"><label>显示名称</label><input data-edit-field="displayName" value="${escapeAttr(u.displayName || "")}" /></div>
+          <div class="field"><label>岗位</label><select data-edit-field="role"${adminOnly ? " disabled" : ""}>${optionsPos}</select></div>
+          <div class="meta">在<strong>岗位管理</strong>中保存好该岗位的勾选权限后，在此处<strong>选定岗位并保存</strong>即可批量对齐权限；若<strong>更换岗位</strong>，保存时会<strong>自动按岗位模板</strong>刷新上方「员工特殊权限」勾选（下方门店/销售员/商品明细仍保留）。仍可点「应用岗位默认权限」在不保存其它改动时单独刷新。</div>
+          <label class="muted"><input type="checkbox" data-edit-field="enabled" ${u.enabled ? "checked":""}/> 启用账号</label>
+        </div>
+        <div class="group"><h4>管理范围</h4>
+          <div class="meta">员工默认继承岗位权限，可按需在下方配置个人数据范围。</div>
+          <label class="muted"><input type="checkbox" data-edit-field="allowAllStores" ${u.allowAllStores ? "checked":""}/> 总部范围（所有门店）</label>
+          <label class="muted"><input type="checkbox" data-edit-field="allowAllSalespeople" ${u.allowAllSalespeople ? "checked":""}/> 所有销售员</label>
+          <label class="muted"><input type="checkbox" data-edit-field="allowAllProducts" ${u.allowAllProducts ? "checked":""}/> 所有商品</label>
+        </div>
+        <div class="group"><h4>数据范围 - 门店</h4>
+          <div class="perm-toolbar"><input data-search-kind="stores" data-id="${escapeAttr(u.id)}" placeholder="搜索门店..." value="${escapeAttr(getPermissionSearchValue("stores", u.id))}"/><button class="btn btn-light" data-action="perm-all" data-kind="stores" data-id="${escapeAttr(u.id)}">全选门店</button><button class="btn btn-light" data-action="perm-clear" data-kind="stores" data-id="${escapeAttr(u.id)}">清空门店</button></div>
+          <div id="count-stores-${escapeAttr(u.id)}" class="meta"></div><div id="perm-list-stores-${escapeAttr(u.id)}" class="perm-list">${renderPermissionCheckboxes("stores", u.id, u.allowedStores || [], getPermissionSearchValue("stores", u.id))}</div><div id="tags-stores-${escapeAttr(u.id)}" class="tag-wrap"></div>
+          <div class="field"><label>手工兜底</label><textarea data-fallback="stores" data-id="${escapeAttr(u.id)}">${escapeHtml(joinCsv(u.allowedStores || []))}</textarea></div>
+        </div>
+        <div class="group"><h4>数据范围 - 销售员</h4>
+          <div class="perm-toolbar"><input data-search-kind="salespeople" data-id="${escapeAttr(u.id)}" placeholder="搜索销售员..." value="${escapeAttr(getPermissionSearchValue("salespeople", u.id))}"/><button class="btn btn-light" data-action="perm-all" data-kind="salespeople" data-id="${escapeAttr(u.id)}">全选销售员</button><button class="btn btn-light" data-action="perm-clear" data-kind="salespeople" data-id="${escapeAttr(u.id)}">清空销售员</button></div>
+          <div id="count-salespeople-${escapeAttr(u.id)}" class="meta"></div><div id="perm-list-salespeople-${escapeAttr(u.id)}" class="perm-list">${renderPermissionCheckboxes("salespeople", u.id, u.allowedSalespeople || [], getPermissionSearchValue("salespeople", u.id))}</div><div id="tags-salespeople-${escapeAttr(u.id)}" class="tag-wrap"></div>
+          <div class="field"><label>手工兜底</label><textarea data-fallback="salespeople" data-id="${escapeAttr(u.id)}">${escapeHtml(joinCsv(u.allowedSalespeople || []))}</textarea></div>
+        </div>
+        <div class="group"><h4>数据范围 - 商品</h4>
+          <div class="perm-toolbar"><input data-search-kind="products" data-id="${escapeAttr(u.id)}" placeholder="搜索商品..." value="${escapeAttr(getPermissionSearchValue("products", u.id))}"/><button class="btn btn-light" data-action="perm-all" data-kind="products" data-id="${escapeAttr(u.id)}">全选商品</button><button class="btn btn-light" data-action="perm-clear" data-kind="products" data-id="${escapeAttr(u.id)}">清空商品</button></div>
+          <div id="count-products-${escapeAttr(u.id)}" class="meta"></div><div id="perm-list-products-${escapeAttr(u.id)}" class="perm-list">${renderPermissionCheckboxes("products", u.id, u.allowedProducts || [], getPermissionSearchValue("products", u.id))}</div><div id="tags-products-${escapeAttr(u.id)}" class="tag-wrap"></div>
+          <div class="field"><label>手工兜底</label><textarea data-fallback="products" data-id="${escapeAttr(u.id)}">${escapeHtml(joinCsv(u.allowedProducts || []))}</textarea></div>
+        </div>
+        <div class="group"><h4>员工特殊权限（可覆盖岗位）</h4><div class="meta">默认继承岗位，以下配置用于员工个体覆盖。</div><div class="perm-list">${renderPermissionFlagsCheckboxes(u.id, "dashboard", u.permissions || {})}</div><div class="perm-list" style="margin-top:8px;">${renderPermissionFlagsCheckboxes(u.id, "admin", u.permissions || {})}</div><div class="perm-list" style="margin-top:8px;">${renderPermissionFlagsCheckboxes(u.id, "agent", u.permissions || {})}</div><div class="perm-list" style="margin-top:8px;">${renderPermissionFlagsCheckboxes(u.id, "reminders", u.permissions || {})}</div></div>
+        <div class="group"><h4>会员隐私权限</h4><div class="perm-list">${renderPermissionFlagsCheckboxes(u.id, "memberFields", u.allowedMemberFields || {})}</div></div>
+      `;
+      ["stores","salespeople","products"].forEach((kind) => renderPermissionPanel(kind, u.id, kind==="stores"?u.allowedStores:kind==="salespeople"?u.allowedSalespeople:u.allowedProducts));
+      document.getElementById("drawerMsg").textContent = adminOnly ? "当前账号非管理员：仅可查看岗位，禁止修改角色/重置密码。" : "";
+      document.getElementById("drawerMask").classList.add("show");
+      document.getElementById("editDrawer").classList.add("show");
+      const resetBtn = document.getElementById("drawerResetPwdBtn");
+      const applyRoleBtn = document.getElementById("drawerApplyRoleBtn");
+      if (resetBtn) resetBtn.disabled = adminOnly;
+      if (applyRoleBtn) applyRoleBtn.disabled = adminOnly;
+      editingUserInitialRole = String(u.role || "");
+    }
+    function closeDrawer() {
+      document.getElementById("drawerMask").classList.remove("show");
+      document.getElementById("editDrawer").classList.remove("show");
+      editingUserId = "";
+    }
+
+    async function saveEditingUser() {
+      if (!editingUserId) return;
+      if (!requireAdminAction("编辑用户")) return;
+      const userId = editingUserId;
+      const newRole = document.querySelector("[data-edit-field='role']")?.value || "";
+      const roleChanged = String(newRole) !== String(editingUserInitialRole || "");
+      const payload = {
+        displayName: document.querySelector("[data-edit-field='displayName']")?.value?.trim() || "",
+        role: newRole,
+        enabled: !!document.querySelector("[data-edit-field='enabled']")?.checked,
+        allowAllStores: !!document.querySelector("[data-edit-field='allowAllStores']")?.checked,
+        allowAllSalespeople: !!document.querySelector("[data-edit-field='allowAllSalespeople']")?.checked,
+        allowAllProducts: !!document.querySelector("[data-edit-field='allowAllProducts']")?.checked,
+        allowedStores: collectPermissionValues("stores", userId),
+        allowedSalespeople: collectPermissionValues("salespeople", userId),
+        allowedProducts: collectPermissionValues("products", userId),
+        permissions: { ...collectPermissionFlags(userId, "dashboard"), ...collectPermissionFlags(userId, "admin"), ...collectPermissionFlags(userId, "agent"), ...collectPermissionFlags(userId, "reminders") },
+        allowedMemberFields: collectPermissionFlags(userId, "memberFields"),
+        applyRoleDefaults: roleChanged,
+      };
+      const msg = document.getElementById("drawerMsg");
+      msg.className = "meta";
+      msg.textContent = "保存中...";
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "PATCH", headers: { "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { msg.className = "meta err"; msg.textContent = data.error || "保存失败"; showToast(msg.textContent, "error"); return; }
+      editingUserInitialRole = String(newRole || "");
+      msg.className = "meta ok";
+      msg.textContent = roleChanged ? "已保存（已按新岗位套用模板权限）" : "已保存";
+      showToast(msg.textContent, "success");
+      await loadUsers();
+      openDrawerForUser(userId);
+    }
+    async function applyPositionDefaultsForEditingUser() {
+      if (!editingUserId) return;
+      if (!requireAdminAction("应用岗位默认权限")) return;
+      const role = document.querySelector("[data-edit-field='role']")?.value || "";
+      const msg = document.getElementById("drawerMsg");
+      msg.className = "meta";
+      msg.textContent = "应用中...";
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(editingUserId)}`, { method:"PATCH", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ role, applyRoleDefaults: true }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { msg.className = "meta err"; msg.textContent = data.error || "应用失败"; showToast(msg.textContent, "error"); return; }
+      showToast("已应用岗位默认权限", "success");
+      await loadUsers();
+      openDrawerForUser(editingUserId);
+    }
+    async function resetPassword(userId) {
+      if (!requireAdminAction("重置密码")) return;
+      const password = window.prompt("请输入新密码（至少8位）：");
+      if (!password) return;
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/reset-password`, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ password }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(data.error || "重置失败", "error"); return; }
+      showToast("密码重置成功", "success");
+    }
+    async function toggleUser(userId) {
+      if (!requireAdminAction("启停账号")) return;
+      const u = usersCache.find((x) => String(x.id) === String(userId));
+      if (!u) return;
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, { method:"PATCH", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ enabled: !u.enabled }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(data.error || "操作失败", "error"); return; }
+      showToast(!u.enabled ? "员工已启用":"员工已停用", "success");
+      await loadUsers();
+    }
+
+    async function deleteUserAccount(userId) {
+      if (!requireAdminAction("删除员工")) return;
+      const u = usersCache.find((x) => String(x.id) === String(userId));
+      if (!u) return;
+      const ok = confirm(
+        `确认永久删除账号「${u.username}」${u.displayName ? `（${u.displayName}）` : ""}？数据将从 users.json 移除且不可恢复。`
+      );
+      if (!ok) return;
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || "删除失败", "error");
+        return;
+      }
+      showToast("账号已删除", "success");
+      if (String(editingUserId) === String(userId)) closeDrawer();
+      await loadUsers();
+    }
+
+    async function createUser() {
+      if (!requireAdminAction("新增员工")) return;
+      const msg = document.getElementById("createUserMsg");
+      msg.className = "meta";
+      msg.textContent = "提交中...";
+      const payload = {
+        username: document.getElementById("createUsername").value.trim(),
+        displayName: document.getElementById("createDisplayName").value.trim(),
+        role: document.getElementById("createRole").value,
+        password: document.getElementById("createPassword").value,
+      };
+      const res = await fetch("/api/admin/users", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { msg.className = "meta err"; msg.textContent = data.error || "创建失败"; showToast(msg.textContent, "error"); return; }
+      msg.className = "meta ok";
+      msg.textContent = "创建成功";
+      showToast("新增员工成功", "success");
+      ["createUsername","createDisplayName","createPassword"].forEach((id) => { document.getElementById(id).value = ""; });
+      await loadUsers();
+      closeCreateModal();
+    }
+    function openCreateModal() {
+      document.getElementById("createModalMask").classList.add("show");
+      document.getElementById("createModal").classList.add("show");
+      document.getElementById("createUserMsg").textContent = "";
+    }
+    function closeCreateModal() {
+      document.getElementById("createModalMask").classList.remove("show");
+      document.getElementById("createModal").classList.remove("show");
+    }
+
+    async function openPositionModal(role) {
+      editingPositionRoleId = String(role || "").trim();
+      const title = document.getElementById("positionModalTitle");
+      const body = document.getElementById("positionModalBody");
+      const saveBtn = document.getElementById("positionModalSaveBtn");
+      const footMeta = document.getElementById("positionModalFootMeta");
+      const entry = rolesCatalog.find((x) => String(x.id) === editingPositionRoleId);
+      title.textContent = entry ? `${entry.label || editingPositionRoleId} · 岗位详情` : `岗位 · ${editingPositionRoleId}`;
+      body.innerHTML = `<div class="muted">加载模板中...</div>`;
+      if (footMeta) footMeta.textContent = "";
+      if (saveBtn) saveBtn.style.display = isAdminOperator() ? "" : "none";
+      document.getElementById("positionModalMask").classList.add("show");
+      document.getElementById("positionModal").classList.add("show");
+      try {
+        const res = await fetch(`/api/admin/roles/${encodeURIComponent(editingPositionRoleId)}/template`, {
+          credentials: "same-origin",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          body.innerHTML = `<div class="meta err">${escapeHtml(data.error || "加载失败")}</div>`;
+          return;
+        }
+        const tpl = data.template || {};
+        const p = tpl.permissions || {};
+        const mf = tpl.allowedMemberFields || {};
+        const canEdit = isAdminOperator();
+        const isAdminRole = editingPositionRoleId === "admin";
+        const tplEditable = canEdit && !isAdminRole;
+        const labelVal = entry?.label || "";
+        const descVal = entry?.description || "";
+        const scopeLab = entry?.scopePresetLabel || "";
+        const rid = editingPositionRoleId;
+        const dash = renderPermissionFlagsCheckboxes(`position-${rid}`, "dashboard", p);
+        const adm = renderPermissionFlagsCheckboxes(`position-${rid}`, "admin", p);
+        const agt = renderPermissionFlagsCheckboxes(`position-${rid}`, "agent", p);
+        const rem = renderPermissionFlagsCheckboxes(`position-${rid}`, "reminders", p);
+        const mem = renderPermissionFlagsCheckboxes(`position-${rid}`, "memberFields", mf);
+        const lockChk = (html) => html.replace(/type="checkbox"/g, 'type="checkbox" disabled');
+        if (footMeta) {
+          footMeta.textContent = !canEdit
+            ? "仅管理员可编辑岗位。"
+            : isAdminRole
+              ? "「管理员」权限由系统固定；可改名称与说明。员工换为其它岗再切回需用自定义岗位承载变体权限。"
+              : "保存后，员工管理里选定本岗位并保存（或换岗保存）将按此模板批量同步「员工特殊权限」勾选；门店/商品/销售员明细仍在各员工里单独配置。";
+        }
+        if (saveBtn) {
+          saveBtn.textContent = tplEditable ? "保存岗位与模板" : "保存展示信息";
+          delete saveBtn.dataset.originText;
+        }
+        body.innerHTML = `
+        <div class="group"><h4>展示信息</h4>
+          <div class="field"><label for="posEditLabel">岗位名称</label><input id="posEditLabel" value="${escapeAttr(labelVal)}"${canEdit ? "" : " disabled"}/></div>
+          <div class="field"><label for="posEditDesc">岗位说明</label><textarea id="posEditDesc"${canEdit ? "" : " disabled"}>${escapeHtml(descVal)}</textarea></div>
+          <div class="field"><label for="posEditScopeLab">默认管理范围（文案展示）</label><input id="posEditScopeLab" value="${escapeAttr(scopeLab)}" placeholder="如：总部 / 受限范围"${canEdit ? "" : " disabled"}/></div>
+          <div class="meta">存储代号：<code>${escapeHtml(rid)}</code>${String(entry?.kind) === "custom" ? "" : "（内置岗位代号不可改）"}</div>
+        </div>
+        <div class="meta" style="margin:-4px 0 4px;">${tplEditable ? "以下勾选将写入该岗位的默认权限模板，供员工管理批量套用。" : "以下仅为默认权限预览。"}</div>
+        <div class="group"><h4>默认看板权限</h4><div class="perm-list">${tplEditable ? dash : lockChk(dash)}</div></div>
+        <div class="group"><h4>默认管理权限</h4><div class="perm-list">${tplEditable ? adm : lockChk(adm)}</div></div>
+        <div class="group"><h4>默认 Agent 权限</h4><div class="perm-list">${tplEditable ? agt : lockChk(agt)}</div></div>
+        <div class="group"><h4>默认钉钉提醒权限</h4><div class="perm-list">${tplEditable ? rem : lockChk(rem)}</div></div>
+        <div class="group"><h4>默认会员隐私权限</h4><div class="perm-list">${tplEditable ? mem : lockChk(mem)}</div></div>
+      `;
+      } catch (_e) {
+        body.innerHTML = `<div class="meta err">网络异常</div>`;
+      }
+    }
+    function closePositionModal() {
+      editingPositionRoleId = "";
+      document.getElementById("positionModalMask").classList.remove("show");
+      document.getElementById("positionModal").classList.remove("show");
+    }
+    async function savePositionCatalogMeta() {
+      if (!editingPositionRoleId) return;
+      if (!requireAdminAction("保存岗位")) return;
+      const roleId = editingPositionRoleId;
+      const payload = {
+        label: document.getElementById("posEditLabel")?.value?.trim() || "",
+        description: String(document.getElementById("posEditDesc")?.value ?? "").trim(),
+        scopePresetLabel: String(document.getElementById("posEditScopeLab")?.value ?? "").trim(),
+      };
+      if (!payload.label) {
+        showToast("岗位名称不能为空", "error");
+        return;
+      }
+      if (roleId !== "admin") {
+        payload.template = collectFullTemplateFromPositionModal(roleId);
+      }
+      try {
+        const res = await fetch(`/api/admin/roles/${encodeURIComponent(roleId)}`, {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 403) {
+          showToast(data.error || "无权限", "error");
+          return;
+        }
+        if (!res.ok) {
+          showToast(data.error || "保存失败", "error");
+          return;
+        }
+        rolesCatalog = Array.isArray(data.roles) ? data.roles : rolesCatalog;
+        refillPositionSelectors();
+        renderPositionCards();
+        renderUsersTable();
+        showToast(roleId === "admin" ? "展示信息已保存" : "岗位与权限模板已保存", "success");
+        await openPositionModal(roleId);
+      } catch (e) {
+        showToast(e?.message || "网络异常", "error");
+      }
+    }
+    function openAddRoleModal() {
+      document.getElementById("addRoleModalMask").classList.add("show");
+      document.getElementById("addRoleModal").classList.add("show");
+      refillPositionSelectors();
+      document.getElementById("addRoleLabel").value = "";
+      document.getElementById("addRoleSlug").value = "";
+      document.getElementById("addRoleDesc").value = "";
+      const msg = document.getElementById("addRoleMsg");
+      if (msg) {
+        msg.textContent = "";
+        msg.className = "meta";
+      }
+    }
+    function closeAddRoleModal() {
+      document.getElementById("addRoleModalMask").classList.remove("show");
+      document.getElementById("addRoleModal").classList.remove("show");
+    }
+    async function submitAddRole() {
+      if (!requireAdminAction("新增岗位")) return;
+      const msg = document.getElementById("addRoleMsg");
+      const label = String(document.getElementById("addRoleLabel")?.value || "").trim();
+      const slugRaw = String(document.getElementById("addRoleSlug")?.value || "").trim().toLowerCase();
+      const cloneFromRoleId = String(document.getElementById("addRoleCloneFrom")?.value || "").trim();
+      const description = String(document.getElementById("addRoleDesc")?.value || "").trim();
+      if (!label) {
+        if (msg) {
+          msg.className = "meta err";
+          msg.textContent = "请填写岗位名称";
+        }
+        return;
+      }
+      const body = {
+        label,
+        cloneFromRoleId,
+        description,
+      };
+      if (slugRaw) body.id = slugRaw;
+      try {
+        const res = await fetch("/api/admin/roles", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 403) {
+          showToast(data.error || "无权限创建岗位", "error");
+          return;
+        }
+        if (!res.ok) {
+          const errLine = data.error || "创建失败";
+          if (msg) {
+            msg.className = "meta err";
+            msg.textContent = errLine;
+          }
+          showToast(errLine, "error");
+          return;
+        }
+        rolesCatalog = Array.isArray(data.catalog?.roles) ? data.catalog.roles : rolesCatalog;
+        refillPositionSelectors();
+        renderPositionCards();
+        closeAddRoleModal();
+        showToast("已创建自定义岗位", "success");
+        await loadUsers();
+      } catch (_e) {
+        if (msg) {
+          msg.className = "meta err";
+          msg.textContent = "网络异常";
+        }
+      }
+    }
+
+    async function sendDingTalkTestNotification() {
+      const msgEl = document.getElementById("dingtalkTestMsg");
+      msgEl.textContent = "";
+      const res = await fetch("/api/v2/admin/notifications/test-dingtalk", {
+        method:"POST",
+        credentials:"same-origin",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok !== false) {
+        const code = Number(data?.dingtalk?.errcode ?? 0);
+        const errmsg = String(data?.dingtalk?.errmsg || "ok");
+        const extra = String(data?.message || "").trim();
+        msgEl.textContent = `发送成功（errcode=${code}, errmsg=${errmsg}）${extra ? `｜${extra}` : ""}`;
+        msgEl.className = "meta ok";
+        showToast("已发送钉钉测试通知","success");
+        return;
+      }
+      msgEl.textContent = data.error || `请求失败（${res.status}）`;
+      msgEl.className = "meta err";
+      showToast(msgEl.textContent,"error");
+    }
+
+    function applyNotificationConfig(config, envStatus) {
+      const cfg = config || {};
+      const binding = cfg?.currentAdminBinding || envStatus?.currentAdminBinding || {
+        bound: !!String(currentUser?.dingtalkUserId || currentUser?.dingTalkUserId || "").trim(),
+      };
+      document.getElementById("dingtalkEnabledCheckbox").checked = cfg?.channels?.dingtalkEnabled !== false;
+      document.getElementById("dingtalkTestUserIdInput").value = String(cfg?.recipients?.dingtalkTestUserId || "");
+      document.getElementById("ruleDailySummaryCheckbox").checked = !!cfg?.rules?.dailySummaryEnabled;
+      document.getElementById("ruleSleepingCheckbox").checked = !!cfg?.rules?.sleepingMemberAlertEnabled;
+      document.getElementById("ruleSalespersonCheckbox").checked = !!cfg?.rules?.salespersonAlertEnabled;
+      const bindingEl = document.getElementById("currentAdminBindingStatus");
+      if (bindingEl) {
+        const isBound = !!binding?.bound;
+        bindingEl.className = isBound ? "meta ok" : "meta err";
+        bindingEl.textContent = isBound
+          ? "当前账号已绑定钉钉"
+          : "当前账号未绑定钉钉，请在钉钉内打开 /mobile 完成绑定";
+      }
+      const envEl = document.getElementById("dingtalkEnvStatus");
+      if (!envEl) return;
+      const status = envStatus || {};
+      envEl.className = "meta";
+      envEl.textContent =
+        `环境检查：CorpId ${status.corpIdConfigured ? "已配置" : "未配置"}（多端 JSAPI 用；纯发工作通知可不配）/ AppKey ${status.appKeyConfigured ? "已配置" : "未配置"} / AppSecret ${status.appSecretConfigured ? "已配置" : "未配置"} / AgentId ${status.agentIdConfigured ? "已配置" : "未配置"}`;
+    }
+
+    async function loadNotificationConfig() {
+      const res = await fetch("/api/v2/admin/notifications/config", { credentials: "same-origin" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || "通知配置加载失败", "error");
+        return;
+      }
+      applyNotificationConfig(
+        { ...(data.config || {}), currentAdminBinding: data.currentAdminBinding || {} },
+        data.envStatus
+      );
+    }
+
+    async function saveNotificationConfig() {
+      const payload = {
+        config: {
+          channels: {
+            dingtalkEnabled: !!document.getElementById("dingtalkEnabledCheckbox").checked,
+          },
+          rules: {
+            dailySummaryEnabled: !!document.getElementById("ruleDailySummaryCheckbox").checked,
+            sleepingMemberAlertEnabled: !!document.getElementById("ruleSleepingCheckbox").checked,
+            salespersonAlertEnabled: !!document.getElementById("ruleSalespersonCheckbox").checked,
+          },
+          recipients: {
+            dingtalkTestUserId: String(document.getElementById("dingtalkTestUserIdInput").value || "").trim(),
+          },
+        },
+      };
+      const res = await fetch("/api/v2/admin/notifications/config", {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || "通知配置保存失败", "error");
+        return;
+      }
+      applyNotificationConfig(data.config);
+      showToast("通知配置已保存", "success");
+    }
+
+    async function loadAiChatQueries() {
+      const tbody = document.getElementById("aiChatQueriesBody");
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="10" class="muted">加载中...</td></tr>';
+      let res;
+      try {
+        res = await fetch("/api/admin/ai-chat-queries?limit=150", { credentials: "same-origin" });
+        if (res.status === 404) {
+          res = await fetch("/api/v2/admin/ai-chat-queries?limit=150", { credentials: "same-origin" });
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="10" class="meta err">${escapeHtml(err?.message || "网络请求失败")}</td></tr>`;
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const hint = data.error || `HTTP ${res.status}${res.statusText ? " " + res.statusText : ""}`;
+        tbody.innerHTML = `<tr><td colspan="10" class="meta err">${escapeHtml(hint)}。若为 404：请在<strong>运行 server.js 的终端</strong>里停掉旧进程后执行 <code>npm start</code>，启动后终端应出现一行 <code>[routes] AI 提问监控</code>；并确认当前账号有「查看审计日志」权限。</td></tr>`;
+        return;
+      }
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="muted">暂无记录（尚无用户提问或日志文件为空）</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows
+        .map((r) => {
+          const filters =
+            r.salesContextPreview && typeof r.salesContextPreview === "object"
+              ? JSON.stringify(r.salesContextPreview).slice(0, 500)
+              : "—";
+          const tools = Array.isArray(r.toolsUsed) && r.toolsUsed.length ? r.toolsUsed.join(", ") : "—";
+          const err = r.error ? escapeHtml(r.error) : "";
+          const reply = r.replyPreview ? escapeHtml(String(r.replyPreview).slice(0, 360)) : "";
+          const dur = r.durationMs != null ? `${r.durationMs} ms` : "—";
+          const http = r.httpStatus != null ? String(r.httpStatus) : "—";
+          return `<tr>
+            <td class="sticky-left muted">${escapeHtml(r.timestamp || "")}</td>
+            <td>${escapeHtml(r.username || r.userId || "")}</td>
+            <td class="cell-wrap">${escapeHtml(r.message || "")}</td>
+            <td class="cell-json">${escapeHtml(filters)}</td>
+            <td class="muted">${escapeHtml(r.model || "")}</td>
+            <td>${http}</td>
+            <td>${dur}</td>
+            <td class="cell-wrap">${escapeHtml(tools)}</td>
+            <td class="cell-wrap">${reply || "—"}</td>
+            <td class="sticky-right cell-wrap meta err">${err || "—"}</td>
+          </tr>`;
+        })
+        .join("");
+    }
+
+    document.getElementById("refreshAiChatQueriesBtn")?.addEventListener("click", () => void loadAiChatQueries());
+
+    document.getElementById("toDashboardBtn").addEventListener("click", () => { window.location.href = "/dashboard"; });
+    document.getElementById("logoutBtn").addEventListener("click", async () => { await fetch("/api/auth/logout", { method:"POST" }); window.location.href = "/login"; });
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const name = tab.getAttribute("data-tab");
+        document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === tab));
+        document.getElementById("staffPanel").classList.toggle("active", name === "staff");
+        document.getElementById("positionPanel").classList.toggle("active", name === "position");
+        document.getElementById("aiChatPanel").classList.toggle("active", name === "aiChat");
+        if (name === "aiChat") void loadAiChatQueries();
+      });
+    });
+    document.getElementById("queryUsersBtn").addEventListener("click", renderUsersTable);
+    document.getElementById("resetFiltersBtn").addEventListener("click", () => {
+      ["filterKeyword","filterPosition","filterStatus","filterScope"].forEach((id) => { document.getElementById(id).value = ""; });
+      selectedTree = { type: "all", value: "" };
+      renderOrgTree();
+      renderUsersTable();
+    });
+    document.getElementById("openCreateBtn").addEventListener("click", function () {
+      if (!requireAdminAction("新增员工")) return;
+      openCreateModal();
+    });
+    document.getElementById("closeCreateModalBtn").addEventListener("click", closeCreateModal);
+    document.getElementById("createModalMask").addEventListener("click", closeCreateModal);
+    document.getElementById("createUserBtn").addEventListener("click", (e) => withLoading(e.currentTarget, "创建中...", createUser));
+
+    document.getElementById("orgTree").addEventListener("click", (event) => {
+      const node = event.target.closest("[data-tree-type]");
+      if (!node) return;
+      selectedTree = { type: node.getAttribute("data-tree-type"), value: node.getAttribute("data-tree-value") || "" };
+      renderOrgTree();
+      renderUsersTable();
+    });
+    document.getElementById("usersTableBody").addEventListener("click", async (event) => {
+      const btn = event.target.closest("[data-action]");
+      if (!btn) return;
+      const userId = btn.getAttribute("data-id");
+      const action = btn.getAttribute("data-action");
+      if (!userId) return;
+      if (action === "edit") return openDrawerForUser(userId);
+      if (action === "toggle") return withLoading(btn, "处理中...", async () => { await toggleUser(userId); });
+      if (action === "reset") return withLoading(btn, "重置中...", async () => { await resetPassword(userId); });
+      if (action === "delete") return withLoading(btn, "删除中...", async () => { await deleteUserAccount(userId); });
+    });
+
+    document.getElementById("positionGrid").addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-action]");
+      if (!btn) return;
+      const act = btn.getAttribute("data-action");
+      const roleAttr = btn.getAttribute("data-role") || "";
+      if (act === "view-position") {
+        void openPositionModal(roleAttr);
+        return;
+      }
+      if (act === "delete-position") {
+        void deleteCustomRoleFromUi(roleAttr);
+      }
+    });
+    document.getElementById("positionModalMask").addEventListener("click", closePositionModal);
+    document.getElementById("closePositionModalBtn").addEventListener("click", closePositionModal);
+    document.getElementById("positionModalSaveBtn").addEventListener("click", (e) => withLoading(e.currentTarget, "保存中...", savePositionCatalogMeta));
+
+    document.getElementById("openAddRoleBtn").addEventListener("click", () => {
+      if (!requireAdminAction("新增岗位")) return;
+      openAddRoleModal();
+    });
+    document.getElementById("addRoleModalMask").addEventListener("click", closeAddRoleModal);
+    document.getElementById("closeAddRoleModalBtn").addEventListener("click", closeAddRoleModal);
+    document.getElementById("addRoleSubmitBtn").addEventListener("click", (e) => withLoading(e.currentTarget, "创建中...", () => submitAddRole()));
+
+    document.getElementById("drawerMask").addEventListener("click", closeDrawer);
+    document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
+    document.getElementById("drawerSaveBtn").addEventListener("click", (e) => withLoading(e.currentTarget, "保存中...", saveEditingUser));
+    document.getElementById("drawerApplyRoleBtn").addEventListener("click", (e) => withLoading(e.currentTarget, "应用中...", applyPositionDefaultsForEditingUser));
+    document.getElementById("drawerResetPwdBtn").addEventListener("click", (e) => withLoading(e.currentTarget, "重置中...", async () => { if (editingUserId) await resetPassword(editingUserId); }));
+    document.getElementById("drawerBody").addEventListener("click", (event) => {
+      const target = event.target.closest("[data-action]");
+      if (!target) return;
+      const userId = target.getAttribute("data-id");
+      const kind = target.getAttribute("data-kind");
+      if (!userId || !kind) return;
+      if (target.getAttribute("data-action") === "perm-all") applyPermissionBulkAction(kind, userId, "all");
+      if (target.getAttribute("data-action") === "perm-clear") applyPermissionBulkAction(kind, userId, "clear");
+    });
+    document.getElementById("drawerBody").addEventListener("input", (event) => {
+      const searchInput = event.target.closest("[data-search-kind]");
+      if (searchInput) {
+        const userId = searchInput.getAttribute("data-id");
+        const kind = searchInput.getAttribute("data-search-kind");
+        if (!userId || !kind) return;
+        setPermissionSearchValue(kind, userId, searchInput.value || "");
+        renderPermissionPanel(kind, userId);
+        return;
+      }
+      const input = event.target.closest("[data-fallback]");
+      if (!input) return;
+      const userId = input.getAttribute("data-id");
+      const kind = input.getAttribute("data-fallback");
+      if (!userId || !kind) return;
+      const selected = collectPermissionValues(kind, userId);
+      renderTagList(`tags-${kind}-${userId}`, selected);
+      renderSelectedCount(kind, userId, selected);
+    });
+    document.getElementById("drawerBody").addEventListener("change", (event) => {
+      const cb = event.target.closest('input[type="checkbox"][data-kind]');
+      if (!cb) return;
+      const userId = cb.getAttribute("data-id");
+      const kind = cb.getAttribute("data-kind");
+      if (!userId || !kind) return;
+      const selected = collectPermissionValues(kind, userId);
+      renderTagList(`tags-${kind}-${userId}`, selected);
+      renderSelectedCount(kind, userId, selected);
+    });
+
+    document.getElementById("importHistoryWrap").addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-delete-import-job]");
+      if (!btn || !canDeleteImportHistory()) return;
+      const jobId = btn.getAttribute("data-delete-import-job") || "";
+      const rowEl = btn.closest(".import-history-row");
+      const filenameEl = rowEl ? rowEl.querySelector("b") : null;
+      const filenameHint = filenameEl ? filenameEl.textContent || "" : "";
+      deleteImportJob(jobId, filenameHint);
+    });
+    document.getElementById("adminImportBtn").addEventListener("click", (event) => withLoading(event.currentTarget, "导入中...", uploadImportFile));
+    document.getElementById("adminImportFile").addEventListener("change", renderImportFileSelection);
+    document.getElementById("saveNotifConfigBtn")?.addEventListener("click", (event) => withLoading(event.currentTarget, "保存中...", saveNotificationConfig));
+    document.getElementById("dingtalkTestBtn")?.addEventListener("click", (event) => withLoading(event.currentTarget, "发送中...", sendDingTalkTestNotification));
+
+    (async () => {
+      const meRes = await fetch("/api/auth/me");
+      if (!meRes.ok) { window.location.href = "/login"; return; }
+      const meJson = await meRes.json().catch(() => ({}));
+      currentUser = meJson?.user || null;
+      if (currentUser?.permissions?.canViewAuditLogs) {
+        document.getElementById("aiChatTabBtn")?.removeAttribute("hidden");
+      }
+      if (!isAdminOperator()) {
+        const createBtn = document.getElementById("openCreateBtn");
+        const resetBtn = document.getElementById("drawerResetPwdBtn");
+        const applyRoleBtn = document.getElementById("drawerApplyRoleBtn");
+        const addRoleBtn = document.getElementById("openAddRoleBtn");
+        if (createBtn) createBtn.disabled = true;
+        if (resetBtn) resetBtn.disabled = true;
+        if (applyRoleBtn) applyRoleBtn.disabled = true;
+        if (addRoleBtn) addRoleBtn.disabled = true;
+      }
+      if (meJson?.user?.role === "admin") {
+        document.getElementById("notifConfigCard").removeAttribute("hidden");
+        try {
+          await loadNotificationConfig();
+        } catch (_error) {
+          // Keep admin core data loading even when v2 notification APIs are temporarily unavailable.
+        }
+      }
+      await Promise.all([loadPermissionOptions(), loadRolesCatalog()]);
+      await loadUsers();
+      await Promise.all([refreshLatestImportMeta(), loadImportHistory()]);
+    })();
+  </script>
+</body>
+</html>
